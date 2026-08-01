@@ -36,7 +36,7 @@
     font-family:var(--font-body);
     -webkit-font-smoothing:antialiased;
   }
-  #app{max-width:1080px;margin:0 auto;padding:28px 20px 80px;}
+  #app{max-width:1120px;margin:0 auto;padding:28px 20px 80px;}
 
   /* ---------- Header ---------- */
   .header-row{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:6px;}
@@ -72,95 +72,50 @@
     border-bottom:2px solid var(--ink);
     margin:18px 0 24px;
   }
-  .scoreboard .cell{
-    padding:10px 14px;
-    text-align:center;
-    border-left:1px solid var(--line);
-  }
+  .scoreboard .cell{padding:10px 14px;text-align:center;border-left:1px solid var(--line);}
   .scoreboard .cell:first-child{border-left:none;}
-  .scoreboard .num{
-    font-family:var(--font-display);
-    font-size:40px;
-    font-weight:600;
-    line-height:1;
-  }
-  .scoreboard .lbl{
-    font-size:11px;
-    letter-spacing:1.2px;
-    text-transform:uppercase;
-    color:var(--ink-soft);
-    margin-top:2px;
-  }
-  .scoreboard .num.alert{color:var(--red);}
+  .scoreboard .num{font-family:var(--font-display);font-size:40px;font-weight:600;line-height:1;}
+  .scoreboard .lbl{font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:var(--ink-soft);margin-top:2px;}
 
   /* ---------- Tabs ---------- */
   .tabs{display:flex;gap:2px;margin-bottom:22px;}
   .tab-btn{
-    font-family:var(--font-display);
-    font-size:20px;
-    letter-spacing:0.5px;
-    font-weight:600;
-    background:transparent;
-    border:none;
-    border-bottom:3px solid transparent;
-    color:var(--ink-soft);
-    padding:6px 4px;
-    margin-right:26px;
-    cursor:pointer;
+    font-family:var(--font-display);font-size:22px;letter-spacing:0.5px;font-weight:600;
+    background:transparent;border:none;border-bottom:3px solid transparent;color:var(--ink-soft);
+    padding:6px 4px;margin-right:30px;cursor:pointer;
   }
   .tab-btn:hover{color:var(--ink);}
   .tab-btn.active{color:var(--ink);border-bottom-color:var(--gold);}
-
   .panel{display:none;}
   .panel.active{display:block;}
 
-  /* ---------- Cards / sections ---------- */
-  .card{
-    background:var(--paper-2);
-    border:1px solid var(--line);
-    border-radius:var(--radius);
-    padding:18px 20px;
-    margin-bottom:18px;
+  /* ---------- Day sub-tabs ---------- */
+  .day-tabs{display:flex;gap:8px;margin-bottom:16px;}
+  .day-tabs button{
+    font-family:var(--font-display);font-size:18px;font-weight:600;padding:6px 18px;
+    border-radius:6px;border:1px solid var(--line);background:var(--paper-2);color:var(--ink-soft);cursor:pointer;
   }
-  .card h2{
-    font-family:var(--font-display);
-    font-size:22px;
-    font-weight:600;
-    margin:0 0 4px;
-    letter-spacing:0.3px;
-  }
+  .day-tabs button.active{background:var(--ink);color:var(--paper);border-color:var(--ink);}
+
+  /* ---------- Cards ---------- */
+  .card{background:var(--paper-2);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;margin-bottom:18px;}
+  .card h2{font-family:var(--font-display);font-size:22px;font-weight:600;margin:0 0 4px;letter-spacing:0.3px;}
   .card .sub{font-size:12.5px;color:var(--ink-soft);margin:0 0 14px;}
-  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
-  @media (max-width:720px){.grid-2{grid-template-columns:1fr;} .scoreboard{grid-template-columns:repeat(2,1fr);}}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:22px;}
+  @media (max-width:760px){.grid-2{grid-template-columns:1fr;} .scoreboard{grid-template-columns:repeat(2,1fr);}}
 
   label{font-size:12px;color:var(--ink-soft);display:block;margin-bottom:4px;letter-spacing:0.3px;}
-  input[type=text], input[type=number], select, textarea{
-    width:100%;
-    font-family:var(--font-body);
-    font-size:14px;
-    padding:8px 10px;
-    border:1px solid var(--line);
-    border-radius:6px;
-    background:var(--paper);
-    color:var(--ink);
-    margin-bottom:12px;
+  input[type=text], input[type=number], input[type=time], select, textarea{
+    width:100%;font-family:var(--font-body);font-size:14px;padding:8px 10px;
+    border:1px solid var(--line);border-radius:6px;background:var(--paper);color:var(--ink);margin-bottom:12px;
   }
-  textarea{resize:vertical;min-height:90px;font-family:var(--font-mono);font-size:13px;}
   input[type=color]{width:44px;height:34px;padding:2px;border:1px solid var(--line);border-radius:6px;background:var(--paper);margin-bottom:12px;cursor:pointer;}
   .row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;}
   .row > div{flex:1;min-width:110px;}
 
   button.btn{
-    font-family:var(--font-body);
-    font-weight:600;
-    font-size:13px;
-    padding:9px 16px;
-    border-radius:7px;
-    border:1px solid var(--ink);
-    background:var(--ink);
-    color:var(--paper);
-    cursor:pointer;
-    white-space:nowrap;
+    font-family:var(--font-body);font-weight:600;font-size:13px;padding:9px 16px;border-radius:7px;
+    border:1px solid var(--ink);background:var(--ink);color:var(--paper);cursor:pointer;white-space:nowrap;
   }
   button.btn:hover{opacity:0.88;}
   button.btn.secondary{background:transparent;color:var(--ink);border-color:var(--line);}
@@ -168,84 +123,41 @@
   button.btn.gold{background:var(--gold);border-color:var(--gold-dark);color:#3A2A0A;}
   button.btn.danger{background:transparent;border-color:var(--red);color:var(--red);}
   button.btn.danger:hover{background:var(--red-tint);}
-  button.icon-btn{
-    background:transparent;border:none;cursor:pointer;color:var(--ink-soft);
-    font-size:13px;padding:4px 6px;
-  }
+  button.icon-btn{background:transparent;border:none;cursor:pointer;color:var(--ink-soft);font-size:12.5px;padding:4px 6px;white-space:nowrap;}
   button.icon-btn:hover{color:var(--red);}
 
-  /* ---------- Chips / lists ---------- */
-  .chip{
-    display:inline-flex;align-items:center;gap:6px;
-    font-size:12px;font-weight:600;
-    padding:3px 10px 3px 8px;
-    border-radius:100px;
-    color:#fff;
-  }
+  .chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:3px 10px 3px 8px;border-radius:100px;color:#fff;white-space:nowrap;}
   .chip .sw{width:8px;height:8px;border-radius:50%;background:#fff;opacity:0.85;}
 
-  .list-row{
-    display:flex;align-items:center;justify-content:space-between;
-    padding:9px 4px;border-bottom:1px solid var(--line);
-    font-size:14px;gap:10px;flex-wrap:wrap;
-  }
+  .list-row{display:flex;align-items:center;justify-content:space-between;padding:9px 4px;border-bottom:1px solid var(--line);font-size:14px;gap:10px;flex-wrap:wrap;}
   .list-row:last-child{border-bottom:none;}
   .list-row .meta{color:var(--ink-soft);font-size:12px;}
-  .empty-hint{
-    padding:18px;text-align:center;color:var(--ink-soft);font-size:13px;
-    border:1px dashed var(--line);border-radius:8px;
-  }
+  .empty-hint{padding:16px;text-align:center;color:var(--ink-soft);font-size:13px;border:1px dashed var(--line);border-radius:8px;}
+  .filter-bar{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
+  .filter-bar select, .filter-bar input{margin-bottom:0;width:auto;min-width:160px;}
 
-  /* ---------- Assign tab ---------- */
-  .assign-picker{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:6px;}
-  .assign-picker > div{flex:1;min-width:180px;}
-  .event-summary{
-    display:flex;gap:18px;align-items:center;flex-wrap:wrap;
-    padding:10px 14px;background:var(--paper);border:1px solid var(--line);border-radius:8px;margin-bottom:14px;
+  /* ---------- Groups tab ---------- */
+  .division-heading{
+    font-family:var(--font-display);font-size:22px;font-weight:600;letter-spacing:0.4px;
+    padding:4px 12px;margin:22px 0 10px;color:var(--ink-soft);
   }
-  .event-summary .cap{font-family:var(--font-mono);font-size:13px;}
-  .event-summary .cap.full{color:var(--red);font-weight:600;}
+  .division-heading:first-child{margin-top:0;}
+  .subhead{font-family:var(--font-display);font-size:16px;font-weight:600;margin:0 0 6px;color:var(--ink-soft);letter-spacing:0.4px;text-transform:uppercase;}
+  .person-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:7px 4px;border-bottom:1px solid var(--line);font-size:13.5px;}
+  .person-row:last-child{border-bottom:none;}
+  .person-row .name{flex:1;min-width:110px;}
+  .att-checks{display:flex;gap:8px;font-size:11px;color:var(--ink-soft);white-space:nowrap;}
+  .att-checks label{display:flex;align-items:center;gap:3px;cursor:pointer;}
+  .note-input{width:150px;font-size:12px;padding:5px 7px;margin-bottom:0;}
 
-  .camper-row{
-    display:flex;align-items:center;gap:10px;
-    padding:9px 6px;border-bottom:1px solid var(--line);
-    font-size:14px;
-  }
-  .camper-row:last-child{border-bottom:none;}
-  .camper-row.conflict{background:var(--red-tint);}
-  .camper-row .name{flex:1;}
-  .camper-row .warn{font-size:11.5px;color:var(--red);font-weight:600;}
-  .toggle{
-    width:38px;height:22px;border-radius:100px;border:1px solid var(--line);
-    background:var(--paper);position:relative;cursor:pointer;flex-shrink:0;
-  }
-  .toggle.on{background:var(--green);border-color:var(--green);}
-  .toggle .knob{
-    position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;
-    background:#fff;transition:left .12s;
-  }
-  .toggle.on .knob{left:18px;}
-  .filter-bar{display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap;}
-  .filter-bar select, .filter-bar input{margin-bottom:0;width:auto;min-width:140px;}
-
-  /* ---------- Schedule tab ---------- */
-  .sched-toggle{display:flex;gap:8px;margin-bottom:14px;}
-  .sched-toggle button{
-    font-size:12.5px;font-weight:600;padding:6px 12px;border-radius:6px;
-    border:1px solid var(--line);background:var(--paper-2);color:var(--ink-soft);cursor:pointer;
-  }
-  .sched-toggle button.active{background:var(--ink);color:var(--paper);border-color:var(--ink);}
+  /* ---------- Schedule grid ---------- */
   table.sched{width:100%;border-collapse:collapse;font-size:13.5px;}
-  table.sched th{
-    text-align:left;font-size:11px;letter-spacing:0.6px;text-transform:uppercase;
-    color:var(--ink-soft);padding:6px 8px;border-bottom:2px solid var(--ink);
-  }
+  table.sched th{text-align:left;font-size:11px;letter-spacing:0.6px;text-transform:uppercase;color:var(--ink-soft);padding:6px 8px;border-bottom:2px solid var(--ink);}
   table.sched td{padding:8px 8px;border-bottom:1px solid var(--line);vertical-align:top;}
-  .slot-chip{
-    display:inline-flex;align-items:center;gap:6px;
-    font-size:12px;background:var(--paper);border:1px solid var(--line);
-    padding:3px 8px;border-radius:6px;margin:2px 4px 2px 0;
-  }
+  table.grid-table th{text-align:center;}
+  table.grid-table td:first-child{white-space:nowrap;}
+  table.grid-table td input[type=text]{margin-bottom:0;font-size:13px;padding:6px 8px;}
+  .slot-chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;background:var(--paper);border:1px solid var(--line);padding:3px 8px;border-radius:6px;margin:2px 4px 2px 0;}
   .slot-chip button{background:none;border:none;color:var(--ink-soft);cursor:pointer;font-size:12px;padding:0;margin-left:2px;}
   .slot-chip button:hover{color:var(--red);}
 
@@ -254,9 +166,8 @@
   ::placeholder{color:#A9AFA6;}
 
   @media print{
-    .tabs,.toolbar,.share-note,#setupPanel,#assignPanel,button{display:none !important;}
+    .tabs,.toolbar,.share-note,.day-tabs,#blockManagerCard,#teamsCard,#groupAddSection,#resetCard,.filter-bar,button{display:none !important;}
     .scoreboard{display:none;}
-    #schedulePanel{display:block !important;}
   }
 </style>
 </head>
@@ -277,7 +188,7 @@
   </div>
 
   <div id="setupWarning" style="display:none;background:#FBEAE8;border:1px solid #C7473D;color:#7A2822;border-radius:8px;padding:12px 16px;margin-bottom:18px;font-size:13.5px;line-height:1.5;">
-    <strong>Setup needed:</strong> this copy isn't connected to a database yet. Open this file in a text editor, find the <code>FIREBASE_CONFIG</code> and <code>SHARED_ACCESS_CODE</code> section near the top of the <code>&lt;script&gt;</code> tag, and fill in your own Firebase project details. See the setup steps that came with this file.
+    <strong>Setup needed:</strong> this copy isn't connected to a database yet. Open this file in a text editor, find the <code>FIREBASE_CONFIG</code> and <code>SHARED_ACCESS_CODE</code> section near the top of the <code>&lt;script&gt;</code> tag, and fill in your own Firebase project details.
   </div>
 
   <div class="header-row">
@@ -294,23 +205,48 @@
 
   <div class="scoreboard">
     <div class="cell"><div class="num" id="statCampers">0</div><div class="lbl">Campers</div></div>
-    <div class="cell"><div class="num" id="statEvents">0</div><div class="lbl">Events</div></div>
-    <div class="cell"><div class="num" id="statAssigned">0%</div><div class="lbl">Assigned</div></div>
-    <div class="cell"><div class="num" id="statConflicts">0</div><div class="lbl">Conflicts</div></div>
+    <div class="cell"><div class="num" id="statCounselors">0</div><div class="lbl">Counselors</div></div>
+    <div class="cell"><div class="num" id="statGroups">0</div><div class="lbl">Groups</div></div>
+    <div class="cell"><div class="num" id="statTeams">0</div><div class="lbl">Teams</div></div>
   </div>
 
   <div class="tabs">
-    <button class="tab-btn active" data-tab="setup">Setup</button>
-    <button class="tab-btn" data-tab="assign">Assign</button>
-    <button class="tab-btn" data-tab="schedule">Schedule</button>
+    <button class="tab-btn active" data-tab="schedule">Schedule</button>
+    <button class="tab-btn" data-tab="groups">Groups</button>
   </div>
 
-  <!-- ================= SETUP ================= -->
-  <div class="panel active" id="setupPanel">
+  <!-- ================= SCHEDULE ================= -->
+  <div class="panel active" id="schedulePanel">
+    <div class="day-tabs">
+      <button class="active" data-day="1">Day 1</button>
+      <button data-day="2">Day 2</button>
+      <button data-day="3">Day 3</button>
+    </div>
+
+    <div class="card" id="blockManagerCard">
+      <h2>Blocks</h2>
+      <p class="sub">Camp runs 9:00 AM&ndash;3:35 PM. Add each time block for this day &mdash; lengths can vary, and any block can have a different end time for a specific team.</p>
+      <div class="row" style="align-items:flex-end;">
+        <div style="flex:1.4;"><label>Label (optional)</label><input type="text" id="blockLabelInput" placeholder="e.g. Block 1"></div>
+        <div><label>Start</label><input type="time" id="blockStartInput" value="09:00"></div>
+        <div><label>End</label><input type="time" id="blockEndInput"></div>
+        <div><button class="btn secondary" id="addBlockBtn">Add block</button></div>
+      </div>
+      <div id="blockList"></div>
+    </div>
 
     <div class="card">
-      <h2>Teams</h2>
-      <p class="sub">Add each team and give it a color to keep rosters easy to scan.</p>
+      <h2>Schedule grid</h2>
+      <p class="sub">Rows are blocks, columns are divisions. Click a cell to note what's happening &mdash; more detailed logic is coming later.</p>
+      <div id="scheduleGrid"></div>
+    </div>
+  </div>
+
+  <!-- ================= GROUPS ================= -->
+  <div class="panel" id="groupsPanel">
+    <div class="card" id="teamsCard">
+      <h2>Color War Teams</h2>
+      <p class="sub">These control who can log in and what they see &mdash; set a name, color, and access code for each.</p>
       <div class="row" style="align-items:flex-end;" id="teamAddRow">
         <div style="flex:2;"><label>Team name</label><input type="text" id="teamNameInput" placeholder="e.g. Blue Team"></div>
         <div style="flex:0 0 60px;"><label>Color</label><input type="color" id="teamColorInput" value="#378ADD"></div>
@@ -320,94 +256,40 @@
       <div id="teamList"></div>
     </div>
 
-    <div class="grid-2">
-      <div class="card">
-        <h2>Campers</h2>
-        <p class="sub">Add one at a time, or paste a whole list below (one name per line).</p>
-        <div class="row" style="align-items:flex-end;">
-          <div style="flex:2;"><label>Camper name</label><input type="text" id="camperNameInput" placeholder="Full name"></div>
-          <div style="flex:1;" id="camperTeamField"><label>Team</label><select id="camperTeamInput"></select></div>
-        </div>
-        <button class="btn secondary" id="addCamperBtn" style="margin-bottom:14px;">Add camper</button>
-
-        <label>Bulk add (one name per line)</label>
-        <textarea id="bulkCamperInput" placeholder="Alex Rivera&#10;Jordan Lee&#10;Sam Patel"></textarea>
-        <div class="row" style="align-items:flex-end;margin-bottom:14px;">
-          <div style="flex:1;" id="bulkTeamField"><label>Assign all to team</label><select id="bulkTeamInput"></select></div>
-          <div><button class="btn secondary" id="bulkAddBtn">Add list</button></div>
-        </div>
-
-        <div class="filter-bar">
-          <select id="camperFilterTeam"><option value="">All teams</option></select>
-          <input type="text" id="camperSearch" placeholder="Search campers...">
-        </div>
-        <div id="camperList"></div>
+    <div class="card" id="groupAddSection">
+      <h2>Add a group</h2>
+      <p class="sub">Enter the group number &mdash; the division, grade, and gender are figured out automatically. Pinecones groups are a single digit (1&ndash;9); every other group is two digits: grade digit (1&ndash;7), then gender digit (0&ndash;4 girls, 5&ndash;9 boys).</p>
+      <div class="row" style="align-items:flex-end;">
+        <div style="flex:1;"><label>Group number</label><input type="text" id="groupNumberInput" placeholder="e.g. 53" inputmode="numeric"></div>
+        <div><button class="btn gold" id="addGroupBtn">Add group</button></div>
       </div>
-
-      <div class="card">
-        <h2>Events</h2>
-        <p class="sub">Give each event a time slot &mdash; campers can't be double-booked in the same slot.</p>
-        <div id="eventAddSection">
-          <div class="row" style="align-items:flex-end;">
-            <div style="flex:2;"><label>Event name</label><input type="text" id="eventNameInput" placeholder="e.g. Tug of War"></div>
-          </div>
-          <div class="row" style="align-items:flex-end;">
-            <div style="flex:1;"><label>Time slot</label><input type="text" id="eventSlotInput" list="slotOptions" placeholder="e.g. Period 1"></div>
-            <div style="flex:1;"><label>Location</label><input type="text" id="eventLocInput" placeholder="Optional"></div>
-          </div>
-          <datalist id="slotOptions"></datalist>
-          <div class="row" style="align-items:flex-end;">
-            <div style="flex:1;"><label>Max campers (optional)</label><input type="number" id="eventCapInput" min="1" placeholder="No limit"></div>
-            <div><button class="btn secondary" id="addEventBtn">Add event</button></div>
-          </div>
-        </div>
-        <div id="eventList"></div>
-      </div>
+      <p class="meta" id="groupNumberPreview" style="margin-top:-6px;font-size:12.5px;color:var(--ink-soft);"></p>
     </div>
+
+    <div class="toolbar">
+      <button class="btn secondary" id="exportRosterBtn">Export roster CSV</button>
+      <button class="btn secondary" id="printBtn">Print</button>
+    </div>
+
+    <div class="filter-bar">
+      <select id="groupDivisionFilter">
+        <option value="">All divisions</option>
+        <option value="Pinecones">Pinecones</option>
+        <option value="Voyagers">Voyagers</option>
+        <option value="Juniors">Juniors</option>
+        <option value="Seniors">Seniors</option>
+        <option value="7th Grade">7th Grade</option>
+      </select>
+      <input type="text" id="groupSearch" placeholder="Search group #, camper, or counselor...">
+    </div>
+
+    <div id="groupsList"></div>
 
     <div class="card" id="resetCard">
       <h2>Reset data</h2>
-      <p class="sub">This clears teams, campers, events, and every assignment for everyone sharing this link.</p>
+      <p class="sub">This clears everything &mdash; teams, groups, counselors, campers, and the schedule &mdash; for everyone sharing this link.</p>
       <button class="btn danger" id="resetBtn">Reset all data</button>
     </div>
-  </div>
-
-  <!-- ================= ASSIGN ================= -->
-  <div class="panel" id="assignPanel">
-    <div class="card">
-      <h2>Assign campers to an event</h2>
-      <p class="sub">Pick an event, then toggle campers on or off. A camper already booked in the same time slot is flagged.</p>
-      <div class="assign-picker">
-        <div>
-          <label>Event</label>
-          <select id="assignEventSelect"></select>
-        </div>
-        <div>
-          <label>Filter by team</label>
-          <select id="assignTeamFilter"><option value="">All teams</option></select>
-        </div>
-        <div>
-          <label>Search</label>
-          <input type="text" id="assignSearch" placeholder="Search campers...">
-        </div>
-      </div>
-      <div id="eventSummary"></div>
-      <div id="assignCamperList"></div>
-    </div>
-  </div>
-
-  <!-- ================= SCHEDULE ================= -->
-  <div class="panel" id="schedulePanel">
-    <div class="toolbar">
-      <button class="btn secondary" id="exportCsvBtn">Export CSV</button>
-      <button class="btn secondary" id="printBtn">Print</button>
-    </div>
-    <div class="sched-toggle">
-      <button class="active" data-view="camper">By camper</button>
-      <button data-view="event">By event</button>
-      <button data-view="team">By team</button>
-    </div>
-    <div class="card" id="scheduleView"></div>
   </div>
 
   <div class="footer-note">Data saves automatically and syncs in real time with anyone using the same access code.</div>
@@ -428,19 +310,139 @@
     appId: "1:64943011742:web:075bc374c1b0602223c88f",
     measurementId: "G-K5XF9BELFB"
   };
-
-  // Any private word or phrase your captains agree on. It doubles as the
-  // "room name" for your data, so pick something specific to your camp/year.
   const SHARED_ACCESS_CODE = "pg-cw-2026";
-  // A separate word/phrase for admins only (team captains don't need it).
-  // This just prevents someone from accidentally picking "Admin" — since you
-  // said you're not worried about real security, it's a speed bump, not a lock.
   const ADMIN_PASSCODE = "admin123";
   const ROLE_STORAGE_KEY = 'colorwar-role-v1';
   // ============================================================
 
-  let currentRole = null; // {type:'admin'} or {type:'team', teamId:'...'}
+  const DIVISION_ORDER = ['Pinecones','Voyagers','Juniors','Seniors','7th Grade'];
+  const DIVISION_COLORS = {
+    'Pinecones':'#8B5E3C',
+    'Voyagers':'#3E7CB1',
+    'Juniors':'#4C9F70',
+    'Seniors':'#B1553E',
+    '7th Grade':'#7A5EA8'
+  };
+  const GRADE_DIVISION = {1:'Voyagers',2:'Voyagers',3:'Juniors',4:'Juniors',5:'Seniors',6:'Seniors',7:'7th Grade'};
+  const ORDINALS = {1:'1st',2:'2nd',3:'3rd',4:'4th',5:'5th',6:'6th',7:'7th'};
 
+  let state = defaultState();
+  function defaultState(){
+    return {
+      campName:'',
+      teams:[],
+      groups:[],
+      counselors:[],
+      campers:[],
+      days:[
+        {index:1,label:'Day 1',blocks:[]},
+        {index:2,label:'Day 2',blocks:[]},
+        {index:3,label:'Day 3',blocks:[]}
+      ],
+      scheduleAssignments:{}
+    };
+  }
+  function normalizeState(data){
+    data = data || {};
+    return {
+      campName: data.campName||'',
+      teams: (data.teams||[]).map(t=>({id:t.id,name:t.name,color:t.color,code:t.code||''})),
+      groups: (data.groups||[]).map(g=>({id:g.id,number:g.number,division:g.division,grade:g.grade||null,gender:g.gender||null})),
+      counselors: (data.counselors||[]).map(c=>({
+        id:c.id, name:c.name, groupId:c.groupId||null, teamId:c.teamId||null,
+        attendance:Object.assign({day1:false,day2:false,day3:false}, c.attendance||{}),
+        note:c.note||''
+      })),
+      campers: (data.campers||[]).map(c=>({
+        id:c.id, name:c.name, teamId:c.teamId||null, groupId:c.groupId||null,
+        attendance:Object.assign({day1:false,day2:false,day3:false}, c.attendance||{}),
+        note:c.note||''
+      })),
+      days:[1,2,3].map(i=>{
+        const existing = (data.days||[]).find(d=>d.index===i);
+        return {index:i, label:'Day '+i, blocks:(existing&&existing.blocks)||[]};
+      }),
+      scheduleAssignments: data.scheduleAssignments||{}
+    };
+  }
+
+  let saveTimer=null;
+  let docRef=null;
+  let applyingRemote=false;
+  let currentRole = null; // {type:'admin'} or {type:'team', teamId:'...'}
+  let currentScheduleDay = 1;
+
+  function uid(prefix){ return prefix+'_'+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  }
+  function formatTime(t){
+    if(!t) return '';
+    const parts = t.split(':'); if(parts.length<2) return t;
+    let h = parseInt(parts[0],10); const m = parts[1];
+    const period = h>=12 ? 'PM':'AM';
+    let hour12 = h%12; if(hour12===0) hour12=12;
+    return hour12+':'+m+' '+period;
+  }
+  function deriveGroupMeta(numberStr){
+    const s = String(numberStr).trim();
+    if(!/^[1-9][0-9]?$/.test(s)) return null;
+    if(s.length===1){
+      return {division:'Pinecones', grade:null, gender:null, label:'Pinecones group '+s};
+    }
+    const g = parseInt(s[0],10);
+    const x = parseInt(s[1],10);
+    const division = GRADE_DIVISION[g];
+    if(!division) return null;
+    const gender = x<=4 ? 'Girls':'Boys';
+    return {division, grade:g, gender, label:ORDINALS[g]+' Grade '+gender+' ('+division+')'};
+  }
+
+  // ---------- Firebase ----------
+  function isConfigured(){
+    return FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.apiKey.indexOf('PASTE_YOUR')!==0;
+  }
+  function attachListener(){
+    firebase.initializeApp(FIREBASE_CONFIG);
+    const db = firebase.firestore();
+    const docId = SHARED_ACCESS_CODE.trim().toLowerCase().replace(/[^a-z0-9]+/g,'-') || 'default-camp';
+    docRef = db.collection('colorwar').doc(docId);
+
+    docRef.onSnapshot(snap=>{
+      if(snap.exists){
+        applyingRemote = true;
+        state = normalizeState(snap.data());
+        const nameInput = document.getElementById('campName');
+        if(document.activeElement!==nameInput){ nameInput.value = state.campName; }
+        renderAll();
+        applyingRemote = false;
+      } else {
+        saveState();
+      }
+    }, err=>{
+      console.error('Firestore listener error', err);
+      alert('Could not connect to the shared schedule. Double-check your Firebase setup, Firestore security rules, and internet connection.');
+    });
+  }
+  function queueSave(){
+    if(applyingRemote) return;
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(saveState, 350);
+  }
+  async function saveState(){
+    if(!docRef) return;
+    try{
+      await docRef.set(Object.assign({}, state, {
+        accessCode: SHARED_ACCESS_CODE,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      }));
+    }catch(e){
+      console.error('Save failed', e);
+      alert('Could not save your change. Check your internet connection and try again.');
+    }
+  }
+
+  // ---------- role / access ----------
   function loadRole(){
     try{
       const raw = localStorage.getItem(ROLE_STORAGE_KEY);
@@ -465,15 +467,9 @@
     const raw = document.getElementById('accessCodeInput').value.trim();
     if(!raw) return;
     const val = raw.toLowerCase();
-    if(val === ADMIN_PASSCODE.trim().toLowerCase()){
-      saveRole({type:'admin'});
-      return;
-    }
+    if(val === ADMIN_PASSCODE.trim().toLowerCase()){ saveRole({type:'admin'}); return; }
     const match = state.teams.find(t => (t.code||'').trim().toLowerCase() === val);
-    if(match){
-      saveRole({type:'team', teamId: match.id});
-      return;
-    }
+    if(match){ saveRole({type:'team', teamId: match.id}); return; }
     document.getElementById('accessCodeError').style.display='block';
   }
   function renderRoleIndicator(){
@@ -487,390 +483,273 @@
     }
   }
 
-  let state = {
-    campName:'',
-    teams:[],
-    campers:[],
-    events:[],
-    assignments:[]
-  };
-  let saveTimer=null;
-  let docRef=null;
-  let applyingRemote=false;
-
-  function uid(prefix){ return prefix+'_'+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
-
-  function isConfigured(){
-    return FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.apiKey.indexOf('PASTE_YOUR')!==0;
-  }
-
-  function attachListener(){
-    firebase.initializeApp(FIREBASE_CONFIG);
-    const db = firebase.firestore();
-    const docId = SHARED_ACCESS_CODE.trim().toLowerCase().replace(/[^a-z0-9]+/g,'-') || 'default-camp';
-    docRef = db.collection('colorwar').doc(docId);
-
-    docRef.onSnapshot(snap=>{
-      if(snap.exists){
-        const data = snap.data() || {};
-        applyingRemote = true;
-        state = {
-          campName: data.campName||'',
-          teams: data.teams||[],
-          campers: data.campers||[],
-          events: data.events||[],
-          assignments: data.assignments||[]
-        };
-        const nameInput = document.getElementById('campName');
-        if(document.activeElement!==nameInput){ nameInput.value = state.campName; }
-        renderAll();
-        applyingRemote = false;
-      } else {
-        saveState();
-      }
-    }, err=>{
-      console.error('Firestore listener error', err);
-      alert('Could not connect to the shared schedule. Double-check your Firebase setup, Firestore security rules, and internet connection.');
-    });
-  }
-
-  function queueSave(){
-    if(applyingRemote) return; // don't echo back a change we just received
-    clearTimeout(saveTimer);
-    saveTimer = setTimeout(saveState, 350);
-  }
-
-  async function saveState(){
-    if(!docRef) return;
-    try{
-      await docRef.set(Object.assign({}, state, {
-        accessCode: SHARED_ACCESS_CODE,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      }));
-    }catch(e){
-      console.error('Save failed', e);
-      alert('Could not save your change. Check your internet connection and try again.');
-    }
-  }
-
-  // ---------- helpers ----------
+  // ---------- lookups ----------
   function teamById(id){ return state.teams.find(t=>t.id===id); }
+  function groupById(id){ return state.groups.find(g=>g.id===id); }
   function camperById(id){ return state.campers.find(c=>c.id===id); }
-  function eventById(id){ return state.events.find(e=>e.id===id); }
-  function assignmentsForCamper(camperId){ return state.assignments.filter(a=>a.camperId===camperId); }
-  function assignmentsForEvent(eventId){ return state.assignments.filter(a=>a.eventId===eventId); }
 
-  function camperConflict(camperId, targetEventId){
-    const target = eventById(targetEventId);
-    if(!target || !target.timeSlot) return null;
-    const mine = assignmentsForCamper(camperId);
-    for(const a of mine){
-      if(a.eventId===targetEventId) continue;
-      const ev = eventById(a.eventId);
-      if(ev && ev.timeSlot && ev.timeSlot===target.timeSlot) return ev;
-    }
-    return null;
-  }
-
-  function countConflicts(){
-    let n=0;
-    for(const c of state.campers){
-      const seen = {};
-      for(const a of assignmentsForCamper(c.id)){
-        const ev = eventById(a.eventId);
-        if(!ev || !ev.timeSlot) continue;
-        if(seen[ev.timeSlot]) n++;
-        seen[ev.timeSlot]=true;
-      }
-    }
-    return n;
-  }
-
-  function isAssigned(camperId,eventId){
-    return state.assignments.some(a=>a.camperId===camperId && a.eventId===eventId);
-  }
-
-  function toggleAssignment(camperId,eventId){
-    const existing = state.assignments.find(a=>a.camperId===camperId && a.eventId===eventId);
-    if(existing){
-      state.assignments = state.assignments.filter(a=>a!==existing);
-    } else {
-      const ev = eventById(eventId);
-      if(ev && ev.capacity){
-        const count = assignmentsForEvent(eventId).length;
-        if(count>=ev.capacity){
-          alert('This event is at capacity ('+ev.capacity+'). Remove someone before adding another camper.');
-          return;
-        }
-      }
-      state.assignments.push({id:uid('a'),camperId,eventId});
-    }
-    queueSave();
-    renderAll();
-  }
-
-  // ---------- rendering: stats ----------
+  // ---------- stats ----------
   function renderStats(){
     const myTeamId = currentTeamId();
-    const scope = (!isAdmin() && myTeamId) ? state.campers.filter(c=>c.teamId===myTeamId) : state.campers;
-    document.getElementById('statCampers').textContent = scope.length;
-    document.getElementById('statEvents').textContent = state.events.length;
-    const totalPossible = scope.length;
-    const assignedCampers = scope.filter(c=>assignmentsForCamper(c.id).length>0).length;
-    const pct = totalPossible ? Math.round((assignedCampers/totalPossible)*100) : 0;
-    document.getElementById('statAssigned').textContent = pct+'%';
-    let conflicts = 0;
-    for(const c of scope){
-      const seen = {};
-      for(const a of assignmentsForCamper(c.id)){
-        const ev = eventById(a.eventId);
-        if(!ev || !ev.timeSlot) continue;
-        if(seen[ev.timeSlot]) conflicts++;
-        seen[ev.timeSlot]=true;
-      }
-    }
-    const conflictEl = document.getElementById('statConflicts');
-    conflictEl.textContent = conflicts;
-    conflictEl.classList.toggle('alert', conflicts>0);
+    const camperScope = (!isAdmin() && myTeamId) ? state.campers.filter(c=>c.teamId===myTeamId) : state.campers;
+    const counselorScope = (!isAdmin() && myTeamId) ? state.counselors.filter(c=>c.teamId===myTeamId) : state.counselors;
+    document.getElementById('statCampers').textContent = camperScope.length;
+    document.getElementById('statCounselors').textContent = counselorScope.length;
+    document.getElementById('statGroups').textContent = state.groups.length;
+    document.getElementById('statTeams').textContent = state.teams.length;
   }
 
-  // ---------- rendering: teams ----------
-  function renderTeams(){
-    document.getElementById('teamAddRow').style.display = isAdmin() ? 'flex' : 'none';
+  // ============================================================
+  // TEAMS (admin-managed, access control)
+  // ============================================================
+  function renderTeamsCard(){
+    document.getElementById('teamsCard').style.display = isAdmin() ? 'block' : 'none';
+    if(!isAdmin()) return;
     const list = document.getElementById('teamList');
     if(state.teams.length===0){
       list.innerHTML = '<div class="empty-hint">No teams yet. Add your first team above.</div>';
     } else {
       list.innerHTML = state.teams.map(t=>{
         const count = state.campers.filter(c=>c.teamId===t.id).length;
-        const removeBtn = isAdmin() ? `<button class="icon-btn" data-action="delTeam" data-id="${t.id}">Remove</button>` : '';
-        const codeText = isAdmin() ? `<span class="meta" style="font-family:var(--font-mono);">code: ${t.code?escapeHtml(t.code):'<em>none set</em>'}</span>` : '';
         return `<div class="list-row">
-          <div><span class="chip" style="background:${t.color}"><span class="sw"></span>${escapeHtml(t.name)}</span> <span class="meta">${count} camper${count===1?'':'s'}</span> ${codeText}</div>
-          ${removeBtn}
-        </div>`;
-      }).join('');
-    }
-    // refresh team selects
-    const selects = [document.getElementById('camperTeamInput'), document.getElementById('bulkTeamInput')];
-    selects.forEach(sel=>{
-      const cur = sel.value;
-      sel.innerHTML = state.teams.map(t=>`<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('') || '<option value="">Add a team first</option>';
-      if(state.teams.some(t=>t.id===cur)) sel.value = cur;
-    });
-    document.getElementById('camperTeamField').style.display = isAdmin() ? 'block' : 'none';
-    document.getElementById('bulkTeamField').style.display = isAdmin() ? 'block' : 'none';
-
-    const filterTeams = [document.getElementById('camperFilterTeam'), document.getElementById('assignTeamFilter')];
-    filterTeams.forEach(sel=>{
-      const cur = sel.value;
-      sel.innerHTML = '<option value="">All teams</option>' + state.teams.map(t=>`<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('');
-      sel.value = cur;
-      sel.style.display = isAdmin() ? 'block' : 'none';
-    });
-  }
-
-  // ---------- rendering: campers ----------
-  function renderCampers(){
-    const filterTeam = isAdmin() ? document.getElementById('camperFilterTeam').value : currentTeamId();
-    const search = document.getElementById('camperSearch').value.trim().toLowerCase();
-    const list = document.getElementById('camperList');
-    let campers = state.campers.slice();
-    if(filterTeam) campers = campers.filter(c=>c.teamId===filterTeam);
-    if(search) campers = campers.filter(c=>c.name.toLowerCase().includes(search));
-    campers.sort((a,b)=>a.name.localeCompare(b.name));
-    if(campers.length===0){
-      list.innerHTML = '<div class="empty-hint">No campers match yet.</div>';
-    } else {
-      list.innerHTML = campers.map(c=>{
-        const team = teamById(c.teamId);
-        const chip = team ? `<span class="chip" style="background:${team.color}"><span class="sw"></span>${escapeHtml(team.name)}</span>` : '<span class="meta">No team</span>';
-        const evCount = assignmentsForCamper(c.id).length;
-        return `<div class="list-row">
-          <div>${escapeHtml(c.name)} ${chip} <span class="meta">${evCount} event${evCount===1?'':'s'}</span></div>
-          <button class="icon-btn" data-action="delCamper" data-id="${c.id}">Remove</button>
+          <div><span class="chip" style="background:${t.color}"><span class="sw"></span>${escapeHtml(t.name)}</span> <span class="meta">${count} camper${count===1?'':'s'} &middot; code: ${t.code?escapeHtml(t.code):'<em>none set</em>'}</span></div>
+          <button class="icon-btn" data-action="delTeam" data-id="${t.id}">Remove</button>
         </div>`;
       }).join('');
     }
   }
 
-  // ---------- rendering: events ----------
-  function renderEvents(){
-    document.getElementById('eventAddSection').style.display = isAdmin() ? 'block' : 'none';
-    const list = document.getElementById('eventList');
-    const slotSet = new Set(state.events.map(e=>e.timeSlot).filter(Boolean));
-    document.getElementById('slotOptions').innerHTML = Array.from(slotSet).map(s=>`<option value="${escapeHtml(s)}">`).join('');
-    if(state.events.length===0){
-      list.innerHTML = '<div class="empty-hint">No events yet.'+(isAdmin()?' Add your first event above.':' An admin needs to add events first.')+'</div>';
-    } else {
-      const sorted = state.events.slice().sort((a,b)=> (a.timeSlot||'').localeCompare(b.timeSlot||'') || a.name.localeCompare(b.name));
-      list.innerHTML = sorted.map(e=>{
-        const count = assignmentsForEvent(e.id).length;
-        const capText = e.capacity ? `${count}/${e.capacity}` : `${count} signed up`;
-        const removeBtn = isAdmin() ? `<button class="icon-btn" data-action="delEvent" data-id="${e.id}">Remove</button>` : '';
-        return `<div class="list-row">
-          <div><strong>${escapeHtml(e.name)}</strong> <span class="meta">${e.timeSlot?escapeHtml(e.timeSlot):'No time slot'}${e.location?' &middot; '+escapeHtml(e.location):''} &middot; ${capText}</span></div>
-          ${removeBtn}
-        </div>`;
-      }).join('');
-    }
-    // assign event select
-    const sel = document.getElementById('assignEventSelect');
-    const cur = sel.value;
-    const sorted = state.events.slice().sort((a,b)=> (a.timeSlot||'').localeCompare(b.timeSlot||'') || a.name.localeCompare(b.name));
-    sel.innerHTML = sorted.map(e=>`<option value="${e.id}">${escapeHtml(e.name)}${e.timeSlot?' &middot; '+escapeHtml(e.timeSlot):''}</option>`).join('') || '<option value="">Add an event first</option>';
-    if(state.events.some(e=>e.id===cur)) sel.value = cur;
+  // ============================================================
+  // GROUPS + COUNSELORS + CAMPERS
+  // ============================================================
+  function groupMatchesSearch(g, search){
+    if(!search) return true;
+    if(String(g.number).toLowerCase().includes(search)) return true;
+    const visibleCampers = state.campers.filter(c=>c.groupId===g.id && (isAdmin() || c.teamId===currentTeamId()));
+    const visibleCounselors = state.counselors.filter(c=>c.groupId===g.id && (isAdmin() || c.teamId===currentTeamId()));
+    return visibleCampers.some(c=>c.name.toLowerCase().includes(search)) || visibleCounselors.some(c=>c.name.toLowerCase().includes(search));
   }
 
-  // ---------- rendering: assign tab ----------
-  function renderAssignTab(){
-    const eventId = document.getElementById('assignEventSelect').value;
-    const summary = document.getElementById('eventSummary');
-    const listEl = document.getElementById('assignCamperList');
-    if(!eventId){
-      summary.innerHTML='';
-      listEl.innerHTML = '<div class="empty-hint">'+(isAdmin() ? 'Add an event on the Setup tab, then come back here to assign campers.' : 'No events available yet &mdash; check back once an admin has added some.')+'</div>';
-      return;
-    }
-    const ev = eventById(eventId);
-    const count = assignmentsForEvent(eventId).length;
-    const full = ev.capacity && count>=ev.capacity;
-    summary.innerHTML = `<div class="event-summary">
-      <strong>${escapeHtml(ev.name)}</strong>
-      <span class="meta">${ev.timeSlot?escapeHtml(ev.timeSlot):'No time slot'}</span>
-      ${ev.location?`<span class="meta">${escapeHtml(ev.location)}</span>`:''}
-      <span class="cap ${full?'full':''}">${ev.capacity ? count+' / '+ev.capacity+' spots' : count+' signed up'}</span>
+  function renderPersonRow(person, kind){
+    const teamChip = teamById(person.teamId)
+      ? `<span class="chip" style="background:${teamById(person.teamId).color}"><span class="sw"></span>${escapeHtml(teamById(person.teamId).name)}</span>`
+      : '<span class="meta">No team</span>';
+    const att = person.attendance||{day1:false,day2:false,day3:false};
+    const removeAction = kind==='camper' ? 'delCamper' : 'delCounselor';
+    return `<div class="person-row">
+      <div class="name">${escapeHtml(person.name)} ${teamChip}</div>
+      <div class="att-checks">
+        <label><input type="checkbox" data-action="toggleAttendance" data-kind="${kind}" data-id="${person.id}" data-day="day1" ${att.day1?'checked':''}> D1</label>
+        <label><input type="checkbox" data-action="toggleAttendance" data-kind="${kind}" data-id="${person.id}" data-day="day2" ${att.day2?'checked':''}> D2</label>
+        <label><input type="checkbox" data-action="toggleAttendance" data-kind="${kind}" data-id="${person.id}" data-day="day3" ${att.day3?'checked':''}> D3</label>
+      </div>
+      <input type="text" class="note-input" data-role="noteInput" data-kind="${kind}" data-id="${person.id}" value="${escapeHtml(person.note||'')}" placeholder="Note...">
+      <button class="icon-btn" data-action="${removeAction}" data-id="${person.id}">Remove</button>
+    </div>`;
+  }
+
+  function renderGroupCard(g){
+    const allCounselors = state.counselors.filter(c=>c.groupId===g.id);
+    const visibleCounselors = (isAdmin() ? allCounselors : allCounselors.filter(c=>c.teamId===currentTeamId())).sort((a,b)=>a.name.localeCompare(b.name));
+    const allCampers = state.campers.filter(c=>c.groupId===g.id);
+    const visibleCampers = (isAdmin() ? allCampers : allCampers.filter(c=>c.teamId===currentTeamId())).sort((a,b)=>a.name.localeCompare(b.name));
+    const divColor = DIVISION_COLORS[g.division]||'#888';
+    const removeGroupBtn = isAdmin() ? `<button class="icon-btn" data-action="delGroup" data-id="${g.id}">Remove group</button>` : '';
+    const genderGradeLabel = g.division==='Pinecones' ? 'Pinecones' : `${ORDINALS[g.grade]} Grade ${g.gender}`;
+
+    const counselorRows = visibleCounselors.map(c=>renderPersonRow(c,'counselor')).join('') || `<div class="empty-hint">${isAdmin() ? 'No counselors yet.' : 'No counselors from your team in this group.'}</div>`;
+    const camperRows = visibleCampers.map(c=>renderPersonRow(c,'camper')).join('') || `<div class="empty-hint">${isAdmin() ? 'No campers yet.' : 'No campers from your team in this group.'}</div>`;
+
+    const counselorTeamField = isAdmin() ? `<select data-role="newCounselorTeam" data-group="${g.id}" style="margin-bottom:0;">${state.teams.map(t=>`<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('')}</select>` : '';
+    const addCounselorForm = `<div class="row" style="align-items:flex-end;margin-top:8px;">
+      <div style="flex:1;"><input type="text" data-role="newCounselorName" data-group="${g.id}" placeholder="Counselor name" style="margin-bottom:0;"></div>
+      ${isAdmin() ? `<div style="flex:1;">${counselorTeamField}</div>` : ''}
+      <div><button class="btn secondary" data-action="addCounselor" data-group="${g.id}">Add counselor</button></div>
     </div>`;
 
-    document.getElementById('assignTeamFilter').style.display = isAdmin() ? 'block' : 'none';
-    const filterTeam = isAdmin() ? document.getElementById('assignTeamFilter').value : currentTeamId();
-    const search = document.getElementById('assignSearch').value.trim().toLowerCase();
-    let campers = state.campers.slice();
-    if(filterTeam) campers = campers.filter(c=>c.teamId===filterTeam);
-    if(search) campers = campers.filter(c=>c.name.toLowerCase().includes(search));
-    campers.sort((a,b)=>a.name.localeCompare(b.name));
+    const camperTeamField = isAdmin() ? `<select data-role="newCamperTeam" data-group="${g.id}" style="margin-bottom:0;">${state.teams.map(t=>`<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('')}</select>` : '';
+    const addCamperForm = `<div class="row" style="align-items:flex-end;margin-top:8px;">
+      <div style="flex:1;"><input type="text" data-role="newCamperName" data-group="${g.id}" placeholder="Camper name" style="margin-bottom:0;"></div>
+      ${isAdmin() ? `<div style="flex:1;">${camperTeamField}</div>` : ''}
+      <div><button class="btn secondary" data-action="addCamper" data-group="${g.id}">Add camper</button></div>
+    </div>`;
 
-    if(campers.length===0){
-      listEl.innerHTML = '<div class="empty-hint">No campers match this filter.</div>';
+    return `<div class="card group-card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;">
+        <div>
+          <span class="chip" style="background:${divColor}"><span class="sw"></span>${escapeHtml(g.division)}</span>
+          <strong style="font-family:var(--font-display);font-size:20px;margin-left:8px;">Group ${escapeHtml(String(g.number))}</strong>
+          <span class="meta">&nbsp;${genderGradeLabel}</span>
+        </div>
+        ${removeGroupBtn}
+      </div>
+      <div class="grid-2" style="margin-top:14px;">
+        <div>
+          <div class="subhead">Counselors</div>
+          ${counselorRows}
+          ${addCounselorForm}
+        </div>
+        <div>
+          <div class="subhead">Campers</div>
+          ${camperRows}
+          ${addCamperForm}
+        </div>
+      </div>
+    </div>`;
+  }
+
+  function renderGroupsList(){
+    const divFilter = document.getElementById('groupDivisionFilter').value;
+    const search = document.getElementById('groupSearch').value.trim().toLowerCase();
+    let groups = state.groups.slice();
+    if(divFilter) groups = groups.filter(g=>g.division===divFilter);
+    groups = groups.filter(g=>groupMatchesSearch(g, search));
+    groups.sort((a,b)=> DIVISION_ORDER.indexOf(a.division)-DIVISION_ORDER.indexOf(b.division) || Number(a.number)-Number(b.number));
+
+    const el = document.getElementById('groupsList');
+    if(groups.length===0){ el.innerHTML = '<div class="empty-hint">No groups match yet.</div>'; return; }
+
+    let html=''; let lastDivision=null;
+    groups.forEach(g=>{
+      if(g.division!==lastDivision){
+        html += `<div class="division-heading" style="border-left:4px solid ${DIVISION_COLORS[g.division]};padding-left:10px;">${escapeHtml(g.division)}</div>`;
+        lastDivision = g.division;
+      }
+      html += renderGroupCard(g);
+    });
+    el.innerHTML = html;
+  }
+
+  function renderGroupsSection(){
+    document.getElementById('groupAddSection').style.display = isAdmin() ? 'block' : 'none';
+    document.getElementById('resetCard').style.display = isAdmin() ? 'block' : 'none';
+    renderTeamsCard();
+    renderGroupsList();
+  }
+
+  // ============================================================
+  // SCHEDULE (blocks + grid)
+  // ============================================================
+  function currentDay(){ return state.days.find(d=>d.index===currentScheduleDay); }
+
+  function renderBlockList(){
+    document.getElementById('blockManagerCard').style.display = isAdmin() ? 'block' : 'none';
+    if(!isAdmin()) return;
+    const day = currentDay();
+    const list = document.getElementById('blockList');
+    const blocks = day.blocks.slice().sort((a,b)=>a.startTime.localeCompare(b.startTime));
+    if(blocks.length===0){
+      list.innerHTML = '<div class="empty-hint">No blocks yet for this day. Add one above.</div>';
       return;
     }
-
-    listEl.innerHTML = campers.map(c=>{
-      const on = isAssigned(c.id, eventId);
-      const conflict = !on ? camperConflict(c.id, eventId) : null;
-      const team = teamById(c.teamId);
-      const chip = team ? `<span class="chip" style="background:${team.color}"><span class="sw"></span>${escapeHtml(team.name)}</span>` : '';
-      return `<div class="camper-row ${conflict?'conflict':''}">
-        <div class="name">${escapeHtml(c.name)} ${chip}</div>
-        ${conflict?`<span class="warn">Already in ${escapeHtml(conflict.name)} (${escapeHtml(conflict.timeSlot)})</span>`:''}
-        <div class="toggle ${on?'on':''}" data-action="toggleAssign" data-camper="${c.id}" data-event="${eventId}"><div class="knob"></div></div>
+    list.innerHTML = blocks.map(b=>{
+      const overrides = b.teamEndOverrides||{};
+      const overrideChips = Object.entries(overrides).map(([teamId,t])=>{
+        const team = teamById(teamId);
+        if(!team) return '';
+        return `<span class="slot-chip">${escapeHtml(team.name)} ends ${formatTime(t)}<button data-action="removeBlockOverride" data-day="${day.index}" data-block="${b.id}" data-team="${teamId}" title="Remove">&times;</button></span>`;
+      }).join('');
+      return `<div class="list-row" style="flex-direction:column;align-items:stretch;">
+        <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+          <div><strong>${escapeHtml(b.label||'Block')}</strong> <span class="meta">${formatTime(b.startTime)} &ndash; ${formatTime(b.endTime)}</span></div>
+          <button class="icon-btn" data-action="delBlock" data-day="${day.index}" data-block="${b.id}">Remove block</button>
+        </div>
+        ${overrideChips?`<div style="margin-top:4px;">${overrideChips}</div>`:''}
+        <div class="row" style="align-items:flex-end;margin-top:8px;">
+          <div style="flex:1;"><select data-role="overrideTeamSelect" data-block="${b.id}" style="margin-bottom:0;">${state.teams.map(t=>`<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('')}</select></div>
+          <div style="flex:0 0 130px;"><input type="time" data-role="overrideTimeInput" data-block="${b.id}" style="margin-bottom:0;"></div>
+          <div><button class="btn secondary" data-action="addBlockOverride" data-day="${day.index}" data-block="${b.id}">+ Different end time for a team</button></div>
+        </div>
       </div>`;
     }).join('');
   }
 
-  // ---------- rendering: schedule tab ----------
-  let scheduleView = 'camper';
-  function renderSchedule(){
-    const el = document.getElementById('scheduleView');
-    const myTeamId = currentTeamId();
-    if(scheduleView==='camper'){
-      let campers = state.campers.slice();
-      if(!isAdmin() && myTeamId) campers = campers.filter(c=>c.teamId===myTeamId);
-      if(campers.length===0){ el.innerHTML='<div class="empty-hint">No campers yet.</div>'; return; }
-      const rows = campers.sort((a,b)=>a.name.localeCompare(b.name)).map(c=>{
-        const team = teamById(c.teamId);
-        const chip = team ? `<span class="chip" style="background:${team.color}"><span class="sw"></span>${escapeHtml(team.name)}</span>` : '';
-        const assigns = assignmentsForCamper(c.id).map(a=>{
-          const ev = eventById(a.eventId);
-          if(!ev) return '';
-          return `<span class="slot-chip">${escapeHtml(ev.name)}${ev.timeSlot?' &middot; '+escapeHtml(ev.timeSlot):''}<button data-action="toggleAssign" data-camper="${c.id}" data-event="${ev.id}" title="Remove">&times;</button></span>`;
-        }).join('') || '<span class="meta">Not scheduled yet</span>';
-        return `<tr><td>${escapeHtml(c.name)}</td><td>${chip}</td><td>${assigns}</td></tr>`;
-      }).join('');
-      el.innerHTML = `<table class="sched"><thead><tr><th>Camper</th><th>Team</th><th>Events</th></tr></thead><tbody>${rows}</tbody></table>`;
-    } else if(scheduleView==='event'){
-      if(state.events.length===0){ el.innerHTML='<div class="empty-hint">No events yet.</div>'; return; }
-      const sorted = state.events.slice().sort((a,b)=> (a.timeSlot||'').localeCompare(b.timeSlot||'') || a.name.localeCompare(b.name));
-      const rows = sorted.map(ev=>{
-        let entries = assignmentsForEvent(ev.id);
-        if(!isAdmin() && myTeamId) entries = entries.filter(a=>{ const c=camperById(a.camperId); return c && c.teamId===myTeamId; });
-        const roster = entries.map(a=>{
-          const c = camperById(a.camperId);
-          return c ? escapeHtml(c.name) : '';
-        }).filter(Boolean).sort().join(', ') || `<span class="meta">${isAdmin() ? 'No one signed up' : 'No one from your team yet'}</span>`;
-        return `<tr><td><strong>${escapeHtml(ev.name)}</strong></td><td>${ev.timeSlot?escapeHtml(ev.timeSlot):''}</td><td>${roster}</td></tr>`;
-      }).join('');
-      el.innerHTML = `<table class="sched"><thead><tr><th>Event</th><th>Time slot</th><th>${isAdmin()?'Roster':'Your roster'}</th></tr></thead><tbody>${rows}</tbody></table>`;
-    } else if(scheduleView==='team'){
-      let teams = state.teams.slice();
-      if(!isAdmin() && myTeamId) teams = teams.filter(t=>t.id===myTeamId);
-      if(teams.length===0){ el.innerHTML='<div class="empty-hint">No teams yet.</div>'; return; }
-      const blocks = teams.map(t=>{
-        const members = state.campers.filter(c=>c.teamId===t.id).sort((a,b)=>a.name.localeCompare(b.name));
-        const rows = members.map(c=>{
-          const assigns = assignmentsForCamper(c.id).map(a=>{
-            const ev = eventById(a.eventId);
-            return ev ? escapeHtml(ev.name)+(ev.timeSlot?' ('+escapeHtml(ev.timeSlot)+')':'') : '';
-          }).filter(Boolean).join(', ') || '<span class="meta">Not scheduled</span>';
-          return `<tr><td>${escapeHtml(c.name)}</td><td>${assigns}</td></tr>`;
-        }).join('');
-        return `<div style="margin-bottom:18px;">
-          <div class="chip" style="background:${t.color};margin-bottom:8px;"><span class="sw"></span>${escapeHtml(t.name)}</div>
-          <table class="sched"><thead><tr><th>Camper</th><th>Events</th></tr></thead><tbody>${rows||'<tr><td colspan=2 class="meta">No campers on this team</td></tr>'}</tbody></table>
-        </div>`;
-      }).join('');
-      el.innerHTML = blocks;
+  function renderScheduleGrid(){
+    const day = currentDay();
+    const el = document.getElementById('scheduleGrid');
+    const blocks = day.blocks.slice().sort((a,b)=>a.startTime.localeCompare(b.startTime));
+    if(blocks.length===0){
+      el.innerHTML = '<div class="empty-hint">'+(isAdmin() ? 'No blocks yet for this day. Add one above.' : 'No blocks yet for this day &mdash; check back once an admin sets up the day.')+'</div>';
+      return;
     }
+    const header = '<tr><th>Block</th>'+DIVISION_ORDER.map(d=>`<th>${escapeHtml(d)}</th>`).join('')+'</tr>';
+    let anyOverrides = false;
+    const rows = blocks.map(b=>{
+      const hasOverride = b.teamEndOverrides && Object.keys(b.teamEndOverrides).length>0;
+      if(hasOverride) anyOverrides = true;
+      const timeLabel = `${formatTime(b.startTime)}&ndash;${formatTime(b.endTime)}${hasOverride?' *':''}`;
+      const cells = DIVISION_ORDER.map(div=>{
+        const key = day.index+'_'+b.id+'_'+div;
+        const val = state.scheduleAssignments[key]||'';
+        return `<td><input type="text" data-role="gridCell" data-key="${key}" value="${escapeHtml(val)}" placeholder="&mdash;"></td>`;
+      }).join('');
+      return `<tr><td><strong>${escapeHtml(b.label||'Block')}</strong><br><span class="meta">${timeLabel}</span></td>${cells}</tr>`;
+    }).join('');
+    el.innerHTML = `<table class="sched grid-table"><thead>${header}</thead><tbody>${rows}</tbody></table>`
+      + (anyOverrides ? '<p class="sub" style="margin-top:8px;">* ends at a different time for one or more teams &mdash; see the block list above for details.</p>' : '');
   }
 
-  function escapeHtml(s){
-    return String(s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  function renderScheduleTab(){
+    renderBlockList();
+    renderScheduleGrid();
   }
 
+  // ============================================================
+  // Render all
+  // ============================================================
   function renderAll(){
     renderRoleIndicator();
-    document.getElementById('resetCard').style.display = isAdmin() ? 'block' : 'none';
-    renderTeams();
-    renderCampers();
-    renderEvents();
-    renderAssignTab();
-    renderSchedule();
     renderStats();
+    renderGroupsSection();
+    renderScheduleTab();
   }
 
-  // ---------- CSV export ----------
-  function exportCsv(){
-    const rows = [['Camper','Team','Event','Time slot','Location']];
+  // ============================================================
+  // CSV export
+  // ============================================================
+  function exportRosterCsv(){
+    const rows = [['Name','Role','Team','Group','Division','Day 1','Day 2','Day 3','Note']];
     state.campers.slice().sort((a,b)=>a.name.localeCompare(b.name)).forEach(c=>{
       const team = teamById(c.teamId);
-      const assigns = assignmentsForCamper(c.id);
-      if(assigns.length===0){
-        rows.push([c.name, team?team.name:'', '', '', '']);
-      } else {
-        assigns.forEach(a=>{
-          const ev = eventById(a.eventId);
-          rows.push([c.name, team?team.name:'', ev?ev.name:'', ev?ev.timeSlot||'':'', ev?ev.location||'':'']);
-        });
-      }
+      const group = groupById(c.groupId);
+      const att = c.attendance||{};
+      rows.push([c.name,'Camper',team?team.name:'',group?group.number:'',group?group.division:'',att.day1?'Yes':'',att.day2?'Yes':'',att.day3?'Yes':'',c.note||'']);
+    });
+    state.counselors.slice().sort((a,b)=>a.name.localeCompare(b.name)).forEach(c=>{
+      const team = teamById(c.teamId);
+      const group = groupById(c.groupId);
+      const att = c.attendance||{};
+      rows.push([c.name,'Counselor',team?team.name:'',group?group.number:'',group?group.division:'',att.day1?'Yes':'',att.day2?'Yes':'',att.day3?'Yes':'',c.note||'']);
     });
     const csv = rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
     const blob = new Blob([csv],{type:'text/csv'});
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href=url; a.download='color-war-schedule.csv';
+    a.href=url; a.download='color-war-roster.csv';
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     URL.revokeObjectURL(url);
   }
 
-  // ---------- event wiring ----------
+  // ============================================================
+  // Event wiring
+  // ============================================================
   document.querySelectorAll('.tab-btn').forEach(btn=>{
     btn.addEventListener('click',()=>{
       document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
       document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
       btn.classList.add('active');
       document.getElementById(btn.dataset.tab+'Panel').classList.add('active');
-      if(btn.dataset.tab==='assign') renderAssignTab();
-      if(btn.dataset.tab==='schedule') renderSchedule();
+      if(btn.dataset.tab==='groups') renderGroupsSection();
+      if(btn.dataset.tab==='schedule') renderScheduleTab();
+    });
+  });
+
+  document.querySelectorAll('.day-tabs button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.day-tabs button').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      currentScheduleDay = parseInt(btn.dataset.day,10);
+      renderScheduleTab();
     });
   });
 
@@ -879,6 +758,7 @@
     queueSave();
   });
 
+  // ---- teams ----
   document.getElementById('addTeamBtn').addEventListener('click', ()=>{
     if(!isAdmin()) return;
     const nameInput = document.getElementById('teamNameInput');
@@ -891,122 +771,194 @@
     queueSave(); renderAll();
   });
 
-  document.getElementById('addCamperBtn').addEventListener('click', ()=>{
-    const nameInput = document.getElementById('camperNameInput');
-    const teamSel = document.getElementById('camperTeamInput');
-    const name = nameInput.value.trim();
-    if(!name) return;
-    const teamId = isAdmin() ? (teamSel.value||null) : currentTeamId();
-    if(!isAdmin() && !teamId) return;
-    state.campers.push({id:uid('camper'), name, teamId});
-    nameInput.value='';
-    queueSave(); renderAll();
+  // ---- groups ----
+  document.getElementById('groupNumberInput').addEventListener('input', ()=>{
+    const meta = deriveGroupMeta(document.getElementById('groupNumberInput').value.trim());
+    document.getElementById('groupNumberPreview').textContent = meta ? '\u2192 '+meta.label : '';
   });
-
-  document.getElementById('bulkAddBtn').addEventListener('click', ()=>{
-    const box = document.getElementById('bulkCamperInput');
-    const teamSel = document.getElementById('bulkTeamInput');
-    const names = box.value.split('\n').map(s=>s.trim()).filter(Boolean);
-    const teamId = isAdmin() ? (teamSel.value||null) : currentTeamId();
-    if(!isAdmin() && !teamId) return;
-    names.forEach(name=>{
-      state.campers.push({id:uid('camper'), name, teamId});
-    });
-    box.value='';
-    queueSave(); renderAll();
-  });
-
-  document.getElementById('addEventBtn').addEventListener('click', ()=>{
+  document.getElementById('addGroupBtn').addEventListener('click', ()=>{
     if(!isAdmin()) return;
-    const nameInput = document.getElementById('eventNameInput');
-    const slotInput = document.getElementById('eventSlotInput');
-    const locInput = document.getElementById('eventLocInput');
-    const capInput = document.getElementById('eventCapInput');
-    const name = nameInput.value.trim();
-    if(!name) return;
-    state.events.push({
-      id:uid('event'), name,
-      timeSlot: slotInput.value.trim(),
-      location: locInput.value.trim(),
-      capacity: capInput.value ? parseInt(capInput.value,10) : null
-    });
-    nameInput.value=''; slotInput.value=''; locInput.value=''; capInput.value='';
+    const input = document.getElementById('groupNumberInput');
+    const numberStr = input.value.trim();
+    const meta = deriveGroupMeta(numberStr);
+    if(!meta){
+      alert('Enter a valid group number: a single digit 1-9 for a Pinecones group, or two digits where the first is the grade (1-7) and the second is 0-4 for girls or 5-9 for boys.');
+      return;
+    }
+    if(state.groups.some(g=>String(g.number)===numberStr)){
+      alert('A group with that number already exists.');
+      return;
+    }
+    state.groups.push({id:uid('group'), number:numberStr, division:meta.division, grade:meta.grade, gender:meta.gender});
+    input.value='';
+    document.getElementById('groupNumberPreview').textContent='';
     queueSave(); renderAll();
   });
 
+  ['groupDivisionFilter','groupSearch'].forEach(id=>{
+    document.getElementById(id).addEventListener('input', renderGroupsList);
+    document.getElementById(id).addEventListener('change', renderGroupsList);
+  });
+
+  // ---- blocks ----
+  document.getElementById('addBlockBtn').addEventListener('click', ()=>{
+    if(!isAdmin()) return;
+    const labelInput = document.getElementById('blockLabelInput');
+    const startInput = document.getElementById('blockStartInput');
+    const endInput = document.getElementById('blockEndInput');
+    if(!startInput.value || !endInput.value) return;
+    const day = currentDay();
+    day.blocks.push({id:uid('block'), label:labelInput.value.trim(), startTime:startInput.value, endTime:endInput.value, teamEndOverrides:{}});
+    labelInput.value=''; startInput.value='09:00'; endInput.value='';
+    queueSave(); renderAll();
+  });
+
+  // ---- reset ----
   document.getElementById('resetBtn').addEventListener('click', ()=>{
     if(!isAdmin()) return;
-    if(!confirm('This will permanently clear all teams, campers, events, and assignments for everyone. Continue?')) return;
-    state = {campName:'', teams:[], campers:[], events:[], assignments:[]};
+    if(!confirm('This will permanently clear everything for everyone. Continue?')) return;
+    state = defaultState();
     document.getElementById('campName').value='';
     queueSave(); renderAll();
   });
 
+  // ---- access gate ----
   document.getElementById('accessCodeSubmit').addEventListener('click', attemptAccessCode);
-  document.getElementById('accessCodeInput').addEventListener('keydown', (e)=>{
-    if(e.key==='Enter') attemptAccessCode();
-  });
-
-  document.getElementById('roleGateCancel').addEventListener('click', ()=>{
-    document.getElementById('roleGate').style.display='none';
-  });
-
+  document.getElementById('accessCodeInput').addEventListener('keydown', (e)=>{ if(e.key==='Enter') attemptAccessCode(); });
+  document.getElementById('roleGateCancel').addEventListener('click', ()=>{ document.getElementById('roleGate').style.display='none'; });
   document.getElementById('roleIndicator').addEventListener('click', openRoleGate);
 
-  ['camperFilterTeam','camperSearch'].forEach(id=>{
-    document.getElementById(id).addEventListener('input', renderCampers);
-  });
-  ['assignEventSelect','assignTeamFilter','assignSearch'].forEach(id=>{
-    document.getElementById(id).addEventListener('input', renderAssignTab);
-    document.getElementById(id).addEventListener('change', renderAssignTab);
-  });
-
-  document.getElementById('exportCsvBtn').addEventListener('click', exportCsv);
+  // ---- export / print ----
+  document.getElementById('exportRosterBtn').addEventListener('click', exportRosterCsv);
   document.getElementById('printBtn').addEventListener('click', ()=>window.print());
 
-  document.querySelectorAll('.sched-toggle button').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      document.querySelectorAll('.sched-toggle button').forEach(b=>b.classList.remove('active'));
-      btn.classList.add('active');
-      scheduleView = btn.dataset.view;
-      renderSchedule();
-    });
+  // ---- delegated: note inputs (blur/change) ----
+  document.getElementById('groupsPanel').addEventListener('change', (e)=>{
+    const t = e.target;
+    if(t.matches('[data-role="noteInput"]')){
+      const kind=t.dataset.kind, id=t.dataset.id;
+      const arr = kind==='camper' ? state.campers : state.counselors;
+      const person = arr.find(p=>p.id===id);
+      if(!person) return;
+      if(!isAdmin() && person.teamId!==currentTeamId()) return;
+      person.note = t.value;
+      queueSave();
+    }
   });
 
-  // delegated clicks for dynamic rows
+  // ---- delegated: schedule grid cells (blur/change) ----
+  document.getElementById('scheduleGrid').addEventListener('change', (e)=>{
+    const t = e.target.closest('[data-role="gridCell"]');
+    if(!t) return;
+    state.scheduleAssignments[t.dataset.key] = t.value;
+    queueSave();
+  });
+
+  // ---- delegated: clicks across the app ----
   document.getElementById('app').addEventListener('click', (e)=>{
     const target = e.target.closest('[data-action]');
     if(!target) return;
     const action = target.dataset.action;
+
     if(action==='delTeam'){
       if(!isAdmin()) return;
       const id = target.dataset.id;
-      if(confirm('Remove this team? Campers on it will become unassigned to a team.')){
+      if(confirm('Remove this team? Campers and counselors on it will become unassigned to a team.')){
         state.teams = state.teams.filter(t=>t.id!==id);
         state.campers.forEach(c=>{ if(c.teamId===id) c.teamId=null; });
+        state.counselors.forEach(c=>{ if(c.teamId===id) c.teamId=null; });
+        queueSave(); renderAll();
+      }
+    } else if(action==='delGroup'){
+      if(!isAdmin()) return;
+      const id = target.dataset.id;
+      if(confirm('Remove this group? Campers and counselors in it will become unassigned from a group.')){
+        state.groups = state.groups.filter(g=>g.id!==id);
+        state.campers.forEach(c=>{ if(c.groupId===id) c.groupId=null; });
+        state.counselors.forEach(c=>{ if(c.groupId===id) c.groupId=null; });
+        queueSave(); renderAll();
+      }
+    } else if(action==='addCounselor'){
+      const groupId = target.dataset.group;
+      const input = document.querySelector(`input[data-role="newCounselorName"][data-group="${groupId}"]`);
+      const name = input.value.trim();
+      if(!name) return;
+      let teamId;
+      if(isAdmin()){
+        const teamSel = document.querySelector(`select[data-role="newCounselorTeam"][data-group="${groupId}"]`);
+        teamId = teamSel ? teamSel.value : null;
+      } else {
+        teamId = currentTeamId();
+      }
+      if(!teamId) return;
+      state.counselors.push({id:uid('counselor'), name, groupId, teamId, attendance:{day1:false,day2:false,day3:false}, note:''});
+      queueSave(); renderAll();
+    } else if(action==='addCamper'){
+      const groupId = target.dataset.group;
+      const nameInput = document.querySelector(`input[data-role="newCamperName"][data-group="${groupId}"]`);
+      const name = nameInput.value.trim();
+      if(!name) return;
+      let teamId;
+      if(isAdmin()){
+        const teamSel = document.querySelector(`select[data-role="newCamperTeam"][data-group="${groupId}"]`);
+        teamId = teamSel ? teamSel.value : null;
+      } else {
+        teamId = currentTeamId();
+      }
+      if(!teamId) return;
+      state.campers.push({id:uid('camper'), name, teamId, groupId, attendance:{day1:false,day2:false,day3:false}, note:''});
+      queueSave(); renderAll();
+    } else if(action==='delCounselor'){
+      const id = target.dataset.id;
+      const counselor = state.counselors.find(c=>c.id===id);
+      if(!isAdmin() && (!counselor || counselor.teamId!==currentTeamId())) return;
+      if(confirm('Remove this counselor?')){
+        state.counselors = state.counselors.filter(c=>c.id!==id);
         queueSave(); renderAll();
       }
     } else if(action==='delCamper'){
       const id = target.dataset.id;
       const camper = camperById(id);
       if(!isAdmin() && (!camper || camper.teamId!==currentTeamId())) return;
-      if(confirm('Remove this camper and all their event assignments?')){
+      if(confirm('Remove this camper?')){
         state.campers = state.campers.filter(c=>c.id!==id);
-        state.assignments = state.assignments.filter(a=>a.camperId!==id);
         queueSave(); renderAll();
       }
-    } else if(action==='delEvent'){
+    } else if(action==='toggleAttendance'){
+      const kind = target.dataset.kind, id = target.dataset.id, day = target.dataset.day;
+      const arr = kind==='camper' ? state.campers : state.counselors;
+      const person = arr.find(p=>p.id===id);
+      if(!person) return;
+      if(!isAdmin() && person.teamId!==currentTeamId()) return;
+      person.attendance = person.attendance||{day1:false,day2:false,day3:false};
+      person.attendance[day] = !person.attendance[day];
+      queueSave(); renderAll();
+    } else if(action==='delBlock'){
       if(!isAdmin()) return;
-      const id = target.dataset.id;
-      if(confirm('Remove this event and all its assignments?')){
-        state.events = state.events.filter(ev=>ev.id!==id);
-        state.assignments = state.assignments.filter(a=>a.eventId!==id);
-        queueSave(); renderAll();
-      }
-    } else if(action==='toggleAssign'){
-      const camper = camperById(target.dataset.camper);
-      if(!isAdmin() && (!camper || camper.teamId!==currentTeamId())) return;
-      toggleAssignment(target.dataset.camper, target.dataset.event);
+      const dayIndex = parseInt(target.dataset.day,10), blockId = target.dataset.block;
+      const day = state.days.find(d=>d.index===dayIndex);
+      day.blocks = day.blocks.filter(b=>b.id!==blockId);
+      Object.keys(state.scheduleAssignments).forEach(k=>{ if(k.indexOf(dayIndex+'_'+blockId+'_')===0) delete state.scheduleAssignments[k]; });
+      queueSave(); renderAll();
+    } else if(action==='addBlockOverride'){
+      if(!isAdmin()) return;
+      const dayIndex = parseInt(target.dataset.day,10), blockId = target.dataset.block;
+      const container = target.closest('.list-row');
+      const teamSel = container.querySelector(`select[data-role="overrideTeamSelect"][data-block="${blockId}"]`);
+      const timeInput = container.querySelector(`input[data-role="overrideTimeInput"][data-block="${blockId}"]`);
+      if(!teamSel || !timeInput || !teamSel.value || !timeInput.value) return;
+      const day = state.days.find(d=>d.index===dayIndex);
+      const block = day.blocks.find(b=>b.id===blockId);
+      block.teamEndOverrides = block.teamEndOverrides||{};
+      block.teamEndOverrides[teamSel.value] = timeInput.value;
+      queueSave(); renderAll();
+    } else if(action==='removeBlockOverride'){
+      if(!isAdmin()) return;
+      const dayIndex = parseInt(target.dataset.day,10), blockId = target.dataset.block, teamId = target.dataset.team;
+      const day = state.days.find(d=>d.index===dayIndex);
+      const block = day.blocks.find(b=>b.id===blockId);
+      if(block && block.teamEndOverrides) delete block.teamEndOverrides[teamId];
+      queueSave(); renderAll();
     }
   });
 
