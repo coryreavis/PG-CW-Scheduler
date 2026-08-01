@@ -258,9 +258,10 @@
 
     <div class="card" id="groupAddSection">
       <h2>Add a group</h2>
-      <p class="sub">Enter the group number &mdash; the division, grade, and gender are figured out automatically. Pinecones groups are a single digit (1&ndash;9); every other group is two digits: grade digit (1&ndash;7), then gender digit (0&ndash;4 girls, 5&ndash;9 boys).</p>
+      <p class="sub">Enter the group number &mdash; the division, grade, and gender are figured out automatically. Pinecones groups are a single digit (1&ndash;9); every other group is two digits: grade digit (1&ndash;7), then gender digit (0&ndash;4 girls, 5&ndash;9 boys). Groups belong to a team, just like campers and counselors.</p>
       <div class="row" style="align-items:flex-end;">
         <div style="flex:1;"><label>Group number</label><input type="text" id="groupNumberInput" placeholder="e.g. 53" inputmode="numeric"></div>
+        <div style="flex:1;" id="groupTeamField"><label>Team</label><select id="groupTeamInput"></select></div>
         <div><button class="btn gold" id="addGroupBtn">Add group</button></div>
       </div>
       <p class="meta" id="groupNumberPreview" style="margin-top:-6px;font-size:12.5px;color:var(--ink-soft);"></p>
@@ -280,6 +281,7 @@
         <option value="Seniors">Seniors</option>
         <option value="7th Grade">7th Grade</option>
       </select>
+      <select id="groupTeamFilter"><option value="">All teams</option></select>
       <input type="text" id="groupSearch" placeholder="Search group #, camper, or counselor...">
     </div>
 
@@ -347,7 +349,7 @@
     return {
       campName: data.campName||'',
       teams: (data.teams||[]).map(t=>({id:t.id,name:t.name,color:t.color,code:t.code||''})),
-      groups: (data.groups||[]).map(g=>({id:g.id,number:g.number,division:g.division,grade:g.grade||null,gender:g.gender||null})),
+      groups: (data.groups||[]).map(g=>({id:g.id,number:g.number,division:g.division,grade:g.grade||null,gender:g.gender||null,teamId:g.teamId||null})),
       counselors: (data.counselors||[]).map(c=>({
         id:c.id, name:c.name, groupId:c.groupId||null, teamId:c.teamId||null,
         attendance:Object.assign({day1:false,day2:false,day3:false}, c.attendance||{}),
@@ -554,23 +556,22 @@
     const allCampers = state.campers.filter(c=>c.groupId===g.id);
     const visibleCampers = (isAdmin() ? allCampers : allCampers.filter(c=>c.teamId===currentTeamId())).sort((a,b)=>a.name.localeCompare(b.name));
     const divColor = DIVISION_COLORS[g.division]||'#888';
-    const removeGroupBtn = isAdmin() ? `<button class="icon-btn" data-action="delGroup" data-id="${g.id}">Remove group</button>` : '';
+    const owningTeam = teamById(g.teamId);
+    const canRemoveGroup = isAdmin() || (owningTeam && owningTeam.id===currentTeamId());
+    const removeGroupBtn = canRemoveGroup ? `<button class="icon-btn" data-action="delGroup" data-id="${g.id}">Remove group</button>` : '';
     const genderGradeLabel = g.division==='Pinecones' ? 'Pinecones' : `${ORDINALS[g.grade]} Grade ${g.gender}`;
+    const teamChip = owningTeam ? `<span class="chip" style="background:${owningTeam.color}"><span class="sw"></span>${escapeHtml(owningTeam.name)}</span>` : '<span class="meta">No team</span>';
 
     const counselorRows = visibleCounselors.map(c=>renderPersonRow(c,'counselor')).join('') || `<div class="empty-hint">${isAdmin() ? 'No counselors yet.' : 'No counselors from your team in this group.'}</div>`;
     const camperRows = visibleCampers.map(c=>renderPersonRow(c,'camper')).join('') || `<div class="empty-hint">${isAdmin() ? 'No campers yet.' : 'No campers from your team in this group.'}</div>`;
 
-    const counselorTeamField = isAdmin() ? `<select data-role="newCounselorTeam" data-group="${g.id}" style="margin-bottom:0;">${state.teams.map(t=>`<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('')}</select>` : '';
     const addCounselorForm = `<div class="row" style="align-items:flex-end;margin-top:8px;">
       <div style="flex:1;"><input type="text" data-role="newCounselorName" data-group="${g.id}" placeholder="Counselor name" style="margin-bottom:0;"></div>
-      ${isAdmin() ? `<div style="flex:1;">${counselorTeamField}</div>` : ''}
       <div><button class="btn secondary" data-action="addCounselor" data-group="${g.id}">Add counselor</button></div>
     </div>`;
 
-    const camperTeamField = isAdmin() ? `<select data-role="newCamperTeam" data-group="${g.id}" style="margin-bottom:0;">${state.teams.map(t=>`<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('')}</select>` : '';
     const addCamperForm = `<div class="row" style="align-items:flex-end;margin-top:8px;">
       <div style="flex:1;"><input type="text" data-role="newCamperName" data-group="${g.id}" placeholder="Camper name" style="margin-bottom:0;"></div>
-      ${isAdmin() ? `<div style="flex:1;">${camperTeamField}</div>` : ''}
       <div><button class="btn secondary" data-action="addCamper" data-group="${g.id}">Add camper</button></div>
     </div>`;
 
@@ -580,6 +581,7 @@
           <span class="chip" style="background:${divColor}"><span class="sw"></span>${escapeHtml(g.division)}</span>
           <strong style="font-family:var(--font-display);font-size:20px;margin-left:8px;">Group ${escapeHtml(String(g.number))}</strong>
           <span class="meta">&nbsp;${genderGradeLabel}</span>
+          ${teamChip}
         </div>
         ${removeGroupBtn}
       </div>
@@ -601,7 +603,14 @@
   function renderGroupsList(){
     const divFilter = document.getElementById('groupDivisionFilter').value;
     const search = document.getElementById('groupSearch').value.trim().toLowerCase();
+    const myTeamId = currentTeamId();
     let groups = state.groups.slice();
+    if(!isAdmin() && myTeamId){
+      groups = groups.filter(g=>g.teamId===myTeamId);
+    } else if(isAdmin()){
+      const teamFilterVal = document.getElementById('groupTeamFilter').value;
+      if(teamFilterVal) groups = groups.filter(g=>g.teamId===teamFilterVal);
+    }
     if(divFilter) groups = groups.filter(g=>g.division===divFilter);
     groups = groups.filter(g=>groupMatchesSearch(g, search));
     groups.sort((a,b)=> DIVISION_ORDER.indexOf(a.division)-DIVISION_ORDER.indexOf(b.division) || Number(a.number)-Number(b.number));
@@ -621,9 +630,27 @@
   }
 
   function renderGroupsSection(){
-    document.getElementById('groupAddSection').style.display = isAdmin() ? 'block' : 'none';
     document.getElementById('resetCard').style.display = isAdmin() ? 'block' : 'none';
     renderTeamsCard();
+
+    // team select for adding a group
+    const teamSel = document.getElementById('groupTeamInput');
+    document.getElementById('groupTeamField').style.display = isAdmin() ? 'block' : 'none';
+    if(isAdmin()){
+      const cur = teamSel.value;
+      teamSel.innerHTML = state.teams.map(t=>`<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('') || '<option value="">Add a team first</option>';
+      if(state.teams.some(t=>t.id===cur)) teamSel.value = cur;
+    }
+
+    // team filter (admin only)
+    const teamFilter = document.getElementById('groupTeamFilter');
+    teamFilter.style.display = isAdmin() ? 'block' : 'none';
+    if(isAdmin()){
+      const cur = teamFilter.value;
+      teamFilter.innerHTML = '<option value="">All teams</option>' + state.teams.map(t=>`<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('');
+      teamFilter.value = cur;
+    }
+
     renderGroupsList();
   }
 
@@ -777,7 +804,6 @@
     document.getElementById('groupNumberPreview').textContent = meta ? '\u2192 '+meta.label : '';
   });
   document.getElementById('addGroupBtn').addEventListener('click', ()=>{
-    if(!isAdmin()) return;
     const input = document.getElementById('groupNumberInput');
     const numberStr = input.value.trim();
     const meta = deriveGroupMeta(numberStr);
@@ -785,17 +811,24 @@
       alert('Enter a valid group number: a single digit 1-9 for a Pinecones group, or two digits where the first is the grade (1-7) and the second is 0-4 for girls or 5-9 for boys.');
       return;
     }
-    if(state.groups.some(g=>String(g.number)===numberStr)){
-      alert('A group with that number already exists.');
+    let teamId;
+    if(isAdmin()){
+      teamId = document.getElementById('groupTeamInput').value || null;
+    } else {
+      teamId = currentTeamId();
+    }
+    if(!teamId){ alert('Add a team first before creating groups.'); return; }
+    if(state.groups.some(g=>String(g.number)===numberStr && g.teamId===teamId)){
+      alert('That team already has a group with this number.');
       return;
     }
-    state.groups.push({id:uid('group'), number:numberStr, division:meta.division, grade:meta.grade, gender:meta.gender});
+    state.groups.push({id:uid('group'), number:numberStr, division:meta.division, grade:meta.grade, gender:meta.gender, teamId});
     input.value='';
     document.getElementById('groupNumberPreview').textContent='';
     queueSave(); renderAll();
   });
 
-  ['groupDivisionFilter','groupSearch'].forEach(id=>{
+  ['groupDivisionFilter','groupTeamFilter','groupSearch'].forEach(id=>{
     document.getElementById(id).addEventListener('input', renderGroupsList);
     document.getElementById(id).addEventListener('change', renderGroupsList);
   });
@@ -870,8 +903,9 @@
         queueSave(); renderAll();
       }
     } else if(action==='delGroup'){
-      if(!isAdmin()) return;
       const id = target.dataset.id;
+      const group = groupById(id);
+      if(!isAdmin() && (!group || group.teamId!==currentTeamId())) return;
       if(confirm('Remove this group? Campers and counselors in it will become unassigned from a group.')){
         state.groups = state.groups.filter(g=>g.id!==id);
         state.campers.forEach(c=>{ if(c.groupId===id) c.groupId=null; });
@@ -880,33 +914,23 @@
       }
     } else if(action==='addCounselor'){
       const groupId = target.dataset.group;
+      const group = groupById(groupId);
+      if(!group) return;
+      if(!isAdmin() && group.teamId!==currentTeamId()) return;
       const input = document.querySelector(`input[data-role="newCounselorName"][data-group="${groupId}"]`);
       const name = input.value.trim();
       if(!name) return;
-      let teamId;
-      if(isAdmin()){
-        const teamSel = document.querySelector(`select[data-role="newCounselorTeam"][data-group="${groupId}"]`);
-        teamId = teamSel ? teamSel.value : null;
-      } else {
-        teamId = currentTeamId();
-      }
-      if(!teamId) return;
-      state.counselors.push({id:uid('counselor'), name, groupId, teamId, attendance:{day1:false,day2:false,day3:false}, note:''});
+      state.counselors.push({id:uid('counselor'), name, groupId, teamId:group.teamId, attendance:{day1:false,day2:false,day3:false}, note:''});
       queueSave(); renderAll();
     } else if(action==='addCamper'){
       const groupId = target.dataset.group;
+      const group = groupById(groupId);
+      if(!group) return;
+      if(!isAdmin() && group.teamId!==currentTeamId()) return;
       const nameInput = document.querySelector(`input[data-role="newCamperName"][data-group="${groupId}"]`);
       const name = nameInput.value.trim();
       if(!name) return;
-      let teamId;
-      if(isAdmin()){
-        const teamSel = document.querySelector(`select[data-role="newCamperTeam"][data-group="${groupId}"]`);
-        teamId = teamSel ? teamSel.value : null;
-      } else {
-        teamId = currentTeamId();
-      }
-      if(!teamId) return;
-      state.campers.push({id:uid('camper'), name, teamId, groupId, attendance:{day1:false,day2:false,day3:false}, note:''});
+      state.campers.push({id:uid('camper'), name, teamId:group.teamId, groupId, attendance:{day1:false,day2:false,day3:false}, note:''});
       queueSave(); renderAll();
     } else if(action==='delCounselor'){
       const id = target.dataset.id;
