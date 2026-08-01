@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Color War Scheduler</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Teko:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
+<style>
+  :root{
+    --ink:#1C2126;
+    --ink-soft:#585F66;
+    --paper:#F6F7F4;
+    --paper-2:#FFFFFF;
+    --line:#DCDFD9;
+    --gold:#E7A93D;
+    --gold-dark:#B9821F;
+    --gold-tint:#FCF1DC;
+    --green:#2E6B4F;
+    --green-tint:#E4EFE9;
+    --red:#C7473D;
+    --red-tint:#FBEAE8;
+    --radius:10px;
+    --font-display:'Teko',sans-serif;
+    --font-body:'Inter',sans-serif;
+    --font-mono:'IBM Plex Mono',monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:var(--font-body);
+    -webkit-font-smoothing:antialiased;
+  }
+  #app{max-width:1080px;margin:0 auto;padding:28px 20px 80px;}
+
+  /* ---------- Header ---------- */
+  .header-row{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:6px;}
+  .brand{display:flex;align-items:baseline;gap:12px;}
+  .brand h1{
+    font-family:var(--font-display);
+    font-weight:600;
+    font-size:44px;
+    letter-spacing:0.5px;
+    margin:0;
+    line-height:1;
+  }
+  .brand .divider{width:1px;height:28px;background:var(--line);}
+  .brand input#campName{
+    font-family:var(--font-display);
+    font-size:26px;
+    font-weight:500;
+    color:var(--ink-soft);
+    border:none;background:transparent;
+    border-bottom:1px dashed var(--line);
+    padding:2px 0;
+    min-width:180px;
+  }
+  .brand input#campName:focus{outline:none;border-bottom:1px solid var(--gold-dark);color:var(--ink);}
+  .share-note{font-size:12px;color:var(--ink-soft);display:flex;align-items:center;gap:6px;}
+  .share-note .dot{width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;}
+
+  /* ---------- Scoreboard strip ---------- */
+  .scoreboard{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    border-top:2px solid var(--ink);
+    border-bottom:2px solid var(--ink);
+    margin:18px 0 24px;
+  }
+  .scoreboard .cell{
+    padding:10px 14px;
+    text-align:center;
+    border-left:1px solid var(--line);
+  }
+  .scoreboard .cell:first-child{border-left:none;}
+  .scoreboard .num{
+    font-family:var(--font-display);
+    font-size:40px;
+    font-weight:600;
+    line-height:1;
+  }
+  .scoreboard .lbl{
+    font-size:11px;
+    letter-spacing:1.2px;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    margin-top:2px;
+  }
+  .scoreboard .num.alert{color:var(--red);}
+
+  /* ---------- Tabs ---------- */
+  .tabs{display:flex;gap:2px;margin-bottom:22px;}
+  .tab-btn{
+    font-family:var(--font-display);
+    font-size:20px;
+    letter-spacing:0.5px;
+    font-weight:600;
+    background:transparent;
+    border:none;
+    border-bottom:3px solid transparent;
+    color:var(--ink-soft);
+    padding:6px 4px;
+    margin-right:26px;
+    cursor:pointer;
+  }
+  .tab-btn:hover{color:var(--ink);}
+  .tab-btn.active{color:var(--ink);border-bottom-color:var(--gold);}
+
+  .panel{display:none;}
+  .panel.active{display:block;}
+
+  /* ---------- Cards / sections ---------- */
+  .card{
+    background:var(--paper-2);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:18px 20px;
+    margin-bottom:18px;
+  }
+  .card h2{
+    font-family:var(--font-display);
+    font-size:22px;
+    font-weight:600;
+    margin:0 0 4px;
+    letter-spacing:0.3px;
+  }
+  .card .sub{font-size:12.5px;color:var(--ink-soft);margin:0 0 14px;}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+  @media (max-width:720px){.grid-2{grid-template-columns:1fr;} .scoreboard{grid-template-columns:repeat(2,1fr);}}
+
+  label{font-size:12px;color:var(--ink-soft);display:block;margin-bottom:4px;letter-spacing:0.3px;}
+  input[type=text], input[type=number], select, textarea{
+    width:100%;
+    font-family:var(--font-body);
+    font-size:14px;
+    padding:8px 10px;
+    border:1px solid var(--line);
+    border-radius:6px;
+    background:var(--paper);
+    color:var(--ink);
+    margin-bottom:12px;
+  }
+  textarea{resize:vertical;min-height:90px;font-family:var(--font-mono);font-size:13px;}
+  input[type=color]{width:44px;height:34px;padding:2px;border:1px solid var(--line);border-radius:6px;background:var(--paper);margin-bottom:12px;cursor:pointer;}
+  .row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;}
+  .row > div{flex:1;min-width:110px;}
+
+  button.btn{
+    font-family:var(--font-body);
+    font-weight:600;
+    font-size:13px;
+    padding:9px 16px;
+    border-radius:7px;
+    border:1px solid var(--ink);
+    background:var(--ink);
+    color:var(--paper);
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  button.btn:hover{opacity:0.88;}
+  button.btn.secondary{background:transparent;color:var(--ink);border-color:var(--line);}
+  button.btn.secondary:hover{border-color:var(--ink);}
+  button.btn.gold{background:var(--gold);border-color:var(--gold-dark);color:#3A2A0A;}
+  button.btn.danger{background:transparent;border-color:var(--red);color:var(--red);}
+  button.btn.danger:hover{background:var(--red-tint);}
+  button.icon-btn{
+    background:transparent;border:none;cursor:pointer;color:var(--ink-soft);
+    font-size:13px;padding:4px 6px;
+  }
+  button.icon-btn:hover{color:var(--red);}
+
+  /* ---------- Chips / lists ---------- */
+  .chip{
+    display:inline-flex;align-items:center;gap:6px;
+    font-size:12px;font-weight:600;
+    padding:3px 10px 3px 8px;
+    border-radius:100px;
+    color:#fff;
+  }
+  .chip .sw{width:8px;height:8px;border-radius:50%;background:#fff;opacity:0.85;}
+
+  .list-row{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:9px 4px;border-bottom:1px solid var(--line);
+    font-size:14px;gap:10px;flex-wrap:wrap;
+  }
+  .list-row:last-child{border-bottom:none;}
+  .list-row .meta{color:var(--ink-soft);font-size:12px;}
+  .empty-hint{
+    padding:18px;text-align:center;color:var(--ink-soft);font-size:13px;
+    border:1px dashed var(--line);border-radius:8px;
+  }
+
+  /* ---------- Assign tab ---------- */
+  .assign-picker{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:6px;}
+  .assign-picker > div{flex:1;min-width:180px;}
+  .event-summary{
+    display:flex;gap:18px;align-items:center;flex-wrap:wrap;
+    padding:10px 14px;background:var(--paper);border:1px solid var(--line);border-radius:8px;margin-bottom:14px;
+  }
+  .event-summary .cap{font-family:var(--font-mono);font-size:13px;}
+  .event-summary .cap.full{color:var(--red);font-weight:600;}
+
+  .camper-row{
+    display:flex;align-items:center;gap:10px;
+    padding:9px 6px;border-bottom:1px solid var(--line);
+    font-size:14px;
+  }
+  .camper-row:last-child{border-bottom:none;}
+  .camper-row.conflict{background:var(--red-tint);}
+  .camper-row .name{flex:1;}
+  .camper-row .warn{font-size:11.5px;color:var(--red);font-weight:600;}
+  .toggle{
+    width:38px;height:22px;border-radius:100px;border:1px solid var(--line);
+    background:var(--paper);position:relative;cursor:pointer;flex-shrink:0;
+  }
+  .toggle.on{background:var(--green);border-color:var(--green);}
+  .toggle .knob{
+    position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;
+    background:#fff;transition:left .12s;
+  }
+  .toggle.on .knob{left:18px;}
+  .filter-bar{display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap;}
+  .filter-bar select, .filter-bar input{margin-bottom:0;width:auto;min-width:140px;}
+
+  /* ---------- Schedule tab ---------- */
+  .sched-toggle{display:flex;gap:8px;margin-bottom:14px;}
+  .sched-toggle button{
+    font-size:12.5px;font-weight:600;padding:6px 12px;border-radius:6px;
+    border:1px solid var(--line);background:var(--paper-2);color:var(--ink-soft);cursor:pointer;
+  }
+  .sched-toggle button.active{background:var(--ink);color:var(--paper);border-color:var(--ink);}
+  table.sched{width:100%;border-collapse:collapse;font-size:13.5px;}
+  table.sched th{
+    text-align:left;font-size:11px;letter-spacing:0.6px;text-transform:uppercase;
+    color:var(--ink-soft);padding:6px 8px;border-bottom:2px solid var(--ink);
+  }
+  table.sched td{padding:8px 8px;border-bottom:1px solid var(--line);vertical-align:top;}
+  .slot-chip{
+    display:inline-flex;align-items:center;gap:6px;
+    font-size:12px;background:var(--paper);border:1px solid var(--line);
+    padding:3px 8px;border-radius:6px;margin:2px 4px 2px 0;
+  }
+  .slot-chip button{background:none;border:none;color:var(--ink-soft);cursor:pointer;font-size:12px;padding:0;margin-left:2px;}
+  .slot-chip button:hover{color:var(--red);}
+
+  .toolbar{display:flex;justify-content:flex-end;gap:8px;margin-bottom:14px;}
+  .footer-note{text-align:center;font-size:11.5px;color:var(--ink-soft);margin-top:28px;}
+  ::placeholder{color:#A9AFA6;}
+
+  @media print{
+    .tabs,.toolbar,.share-note,#setupPanel,#assignPanel,button{display:none !important;}
+    .scoreboard{display:none;}
+    #schedulePanel{display:block !important;}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div id="roleGate" style="display:none;position:fixed;inset:0;background:rgba(28,33,38,0.92);z-index:9999;align-items:center;justify-content:center;padding:20px;">
+    <div style="background:var(--paper-2);border-radius:12px;padding:28px 30px;max-width:420px;width:100%;border:1px solid var(--line);">
+      <h2 style="font-family:var(--font-display);font-size:26px;margin:0 0 6px;">Enter your access code</h2>
+      <p style="font-size:13px;color:var(--ink-soft);margin:0 0 18px;">Use your team's code, or the admin password if you manage the whole schedule. This is saved on this device only &mdash; switch anytime from the top corner.</p>
+      <div class="row" style="align-items:flex-end;">
+        <div style="flex:1;"><label>Access code</label><input type="text" id="accessCodeInput" placeholder="Enter your code" autocomplete="off"></div>
+        <div><button class="btn gold" id="accessCodeSubmit">Continue</button></div>
+      </div>
+      <div id="accessCodeError" style="display:none;color:var(--red);font-size:12.5px;margin-top:2px;">That code isn't recognized. Double-check with your head captain.</div>
+      <button class="icon-btn" id="roleGateCancel" style="display:none;margin-top:10px;">Cancel</button>
+    </div>
+  </div>
+
+  <div id="setupWarning" style="display:none;background:#FBEAE8;border:1px solid #C7473D;color:#7A2822;border-radius:8px;padding:12px 16px;margin-bottom:18px;font-size:13.5px;line-height:1.5;">
+    <strong>Setup needed:</strong> this copy isn't connected to a database yet. Open this file in a text editor, find the <code>FIREBASE_CONFIG</code> and <code>SHARED_ACCESS_CODE</code> section near the top of the <code>&lt;script&gt;</code> tag, and fill in your own Firebase project details. See the setup steps that came with this file.
+  </div>
+
+  <div class="header-row">
+    <div class="brand">
+      <h1>Color War</h1>
+      <div class="divider"></div>
+      <input id="campName" type="text" placeholder="Camp name" />
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+      <div class="share-note"><span class="dot"></span>Live-synced with your co-captains &mdash; changes appear for everyone instantly</div>
+      <div class="share-note" id="roleIndicator" style="cursor:pointer;"></div>
+    </div>
+  </div>
+
+  <div class="scoreboard">
+    <div class="cell"><div class="num" id="statCampers">0</div><div class="lbl">Campers</div></div>
+    <div class="cell"><div class="num" id="statEvents">0</div><div class="lbl">Events</div></div>
+    <div class="cell"><div class="num" id="statAssigned">0%</div><div class="lbl">Assigned</div></div>
+    <div class="cell"><div class="num" id="statConflicts">0</div><div class="lbl">Conflicts</div></div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="setup">Setup</button>
+    <button class="tab-btn" data-tab="assign">Assign</button>
+    <button class="tab-btn" data-tab="schedule">Schedule</button>
+  </div>
+
+  <!-- ================= SETUP ================= -->
+  <div class="panel active" id="setupPanel">
+
+    <div class="card">
+      <h2>Teams</h2>
+      <p class="sub">Add each team and give it a color to keep rosters easy to scan.</p>
+      <div class="row" style="align-items:flex-end;" id="teamAddRow">
+        <div style="flex:2;"><label>Team name</label><input type="text" id="teamNameInput" placeholder="e.g. Blue Team"></div>
+        <div style="flex:0 0 60px;"><label>Color</label><input type="color" id="teamColorInput" value="#378ADD"></div>
+        <div style="flex:1.5;"><label>Team code</label><input type="text" id="teamCodeInput" placeholder="Secret code for this team" autocomplete="off"></div>
+        <div style="flex:0 0 auto;"><button class="btn gold" id="addTeamBtn">Add team</button></div>
+      </div>
+      <div id="teamList"></div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <h2>Campers</h2>
+        <p class="sub">Add one at a time, or paste a whole list below (one name per line).</p>
+        <div class="row" style="align-items:flex-end;">
+          <div style="flex:2;"><label>Camper name</label><input type="text" id="camperNameInput" placeholder="Full name"></div>
+          <div style="flex:1;" id="camperTeamField"><label>Team</label><select id="camperTeamInput"></select></div>
+        </div>
+        <button class="btn secondary" id="addCamperBtn" style="margin-bottom:14px;">Add camper</button>
+
+        <label>Bulk add (one name per line)</label>
+        <textarea id="bulkCamperInput" placeholder="Alex Rivera&#10;Jordan Lee&#10;Sam Patel"></textarea>
+        <div class="row" style="align-items:flex-end;margin-bottom:14px;">
+          <div style="flex:1;" id="bulkTeamField"><label>Assign all to team</label><select id="bulkTeamInput"></select></div>
+          <div><button class="btn secondary" id="bulkAddBtn">Add list</button></div>
+        </div>
+
+        <div class="filter-bar">
+          <select id="camperFilterTeam"><option value="">All teams</option></select>
+          <input type="text" id="camperSearch" placeholder="Search campers...">
+        </div>
+        <div id="camperList"></div>
+      </div>
+
+      <div class="card">
+        <h2>Events</h2>
+        <p class="sub">Give each event a time slot &mdash; campers can't be double-booked in the same slot.</p>
+        <div id="eventAddSection">
+          <div class="row" style="align-items:flex-end;">
+            <div style="flex:2;"><label>Event name</label><input type="text" id="eventNameInput" placeholder="e.g. Tug of War"></div>
+          </div>
+          <div class="row" style="align-items:flex-end;">
+            <div style="flex:1;"><label>Time slot</label><input type="text" id="eventSlotInput" list="slotOptions" placeholder="e.g. Period 1"></div>
+            <div style="flex:1;"><label>Location</label><input type="text" id="eventLocInput" placeholder="Optional"></div>
+          </div>
+          <datalist id="slotOptions"></datalist>
+          <div class="row" style="align-items:flex-end;">
+            <div style="flex:1;"><label>Max campers (optional)</label><input type="number" id="eventCapInput" min="1" placeholder="No limit"></div>
+            <div><button class="btn secondary" id="addEventBtn">Add event</button></div>
+          </div>
+        </div>
+        <div id="eventList"></div>
+      </div>
+    </div>
+
+    <div class="card" id="resetCard">
+      <h2>Reset data</h2>
+      <p class="sub">This clears teams, campers, events, and every assignment for everyone sharing this link.</p>
+      <button class="btn danger" id="resetBtn">Reset all data</button>
+    </div>
+  </div>
+
+  <!-- ================= ASSIGN ================= -->
+  <div class="panel" id="assignPanel">
+    <div class="card">
+      <h2>Assign campers to an event</h2>
+      <p class="sub">Pick an event, then toggle campers on or off. A camper already booked in the same time slot is flagged.</p>
+      <div class="assign-picker">
+        <div>
+          <label>Event</label>
+          <select id="assignEventSelect"></select>
+        </div>
+        <div>
+          <label>Filter by team</label>
+          <select id="assignTeamFilter"><option value="">All teams</option></select>
+        </div>
+        <div>
+          <label>Search</label>
+          <input type="text" id="assignSearch" placeholder="Search campers...">
+        </div>
+      </div>
+      <div id="eventSummary"></div>
+      <div id="assignCamperList"></div>
+    </div>
+  </div>
+
+  <!-- ================= SCHEDULE ================= -->
+  <div class="panel" id="schedulePanel">
+    <div class="toolbar">
+      <button class="btn secondary" id="exportCsvBtn">Export CSV</button>
+      <button class="btn secondary" id="printBtn">Print</button>
+    </div>
+    <div class="sched-toggle">
+      <button class="active" data-view="camper">By camper</button>
+      <button data-view="event">By event</button>
+      <button data-view="team">By team</button>
+    </div>
+    <div class="card" id="scheduleView"></div>
+  </div>
+
+  <div class="footer-note">Data saves automatically and syncs in real time with anyone using the same access code.</div>
+</div>
+
+<script>
+(function(){
+  // ============================================================
+  // FIREBASE SETUP — fill these in with your own project's values
+  // (Firebase console > Project settings > General > Your apps)
+  // ============================================================
+  const FIREBASE_CONFIG = {
+    apiKey: "AIzaSyCpF6lu0NDceXahSbVLGenmy03tRKT6tZY",
+    authDomain: "pive-colorwar-2026.firebaseapp.com",
+    projectId: "pive-colorwar-2026",
+    storageBucket: "pive-colorwar-2026.firebasestorage.app",
+    messagingSenderId: "64943011742",
+    appId: "1:64943011742:web:075bc374c1b0602223c88f",
+    measurementId: "G-K5XF9BELFB"
+  };
+
+  // Any private word or phrase your captains agree on. It doubles as the
+  // "room name" for your data, so pick something specific to your camp/year.
+  const SHARED_ACCESS_CODE = "pg-cw-2026";
+  // A separate word/phrase for admins only (team captains don't need it).
+  // This just prevents someone from accidentally picking "Admin" — since you
+  // said you're not worried about real security, it's a speed bump, not a lock.
+  const ADMIN_PASSCODE = "admin123";
+  const ROLE_STORAGE_KEY = 'colorwar-role-v1';
+  // ============================================================
+
+  let currentRole = null; // {type:'admin'} or {type:'team', teamId:'...'}
+
+  function loadRole(){
+    try{
+      const raw = localStorage.getItem(ROLE_STORAGE_KEY);
+      if(raw) currentRole = JSON.parse(raw);
+    }catch(e){ currentRole = null; }
+  }
+  function saveRole(role){
+    currentRole = role;
+    try{ localStorage.setItem(ROLE_STORAGE_KEY, JSON.stringify(role)); }catch(e){}
+    document.getElementById('roleGate').style.display='none';
+    renderAll();
+  }
+  function isAdmin(){ return !!(currentRole && currentRole.type==='admin'); }
+  function currentTeamId(){ return (currentRole && currentRole.type==='team') ? currentRole.teamId : null; }
+  function openRoleGate(){
+    document.getElementById('roleGateCancel').style.display = currentRole ? 'inline-block' : 'none';
+    document.getElementById('accessCodeError').style.display = 'none';
+    document.getElementById('accessCodeInput').value = '';
+    document.getElementById('roleGate').style.display='flex';
+  }
+  function attemptAccessCode(){
+    const raw = document.getElementById('accessCodeInput').value.trim();
+    if(!raw) return;
+    const val = raw.toLowerCase();
+    if(val === ADMIN_PASSCODE.trim().toLowerCase()){
+      saveRole({type:'admin'});
+      return;
+    }
+    const match = state.teams.find(t => (t.code||'').trim().toLowerCase() === val);
+    if(match){
+      saveRole({type:'team', teamId: match.id});
+      return;
+    }
+    document.getElementById('accessCodeError').style.display='block';
+  }
+  function renderRoleIndicator(){
+    const el = document.getElementById('roleIndicator');
+    if(!currentRole){ el.innerHTML=''; return; }
+    if(currentRole.type==='admin'){
+      el.innerHTML = '<span class="dot" style="background:var(--gold-dark);"></span>Viewing as admin &middot; <u>switch</u>';
+    } else {
+      const t = teamById(currentRole.teamId);
+      el.innerHTML = `<span class="dot" style="background:${t?t.color:'var(--ink-soft)'};"></span>Viewing as ${t?escapeHtml(t.name):'a removed team'} &middot; <u>switch</u>`;
+    }
+  }
+
+  let state = {
+    campName:'',
+    teams:[],
+    campers:[],
+    events:[],
+    assignments:[]
+  };
+  let saveTimer=null;
+  let docRef=null;
+  let applyingRemote=false;
+
+  function uid(prefix){ return prefix+'_'+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+
+  function isConfigured(){
+    return FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.apiKey.indexOf('PASTE_YOUR')!==0;
+  }
+
+  function attachListener(){
+    firebase.initializeApp(FIREBASE_CONFIG);
+    const db = firebase.firestore();
+    const docId = SHARED_ACCESS_CODE.trim().toLowerCase().replace(/[^a-z0-9]+/g,'-') || 'default-camp';
+    docRef = db.collection('colorwar').doc(docId);
+
+    docRef.onSnapshot(snap=>{
+      if(snap.exists){
+        const data = snap.data() || {};
+        applyingRemote = true;
+        state = {
+          campName: data.campName||'',
+          teams: data.teams||[],
+          campers: data.campers||[],
+          events: data.events||[],
+          assignments: data.assignments||[]
+        };
+        const nameInput = document.getElementById('campName');
+        if(document.activeElement!==nameInput){ nameInput.value = state.campName; }
+        renderAll();
+        applyingRemote = false;
+      } else {
+        saveState();
+      }
+    }, err=>{
+      console.error('Firestore listener error', err);
+      alert('Could not connect to the shared schedule. Double-check your Firebase setup, Firestore security rules, and internet connection.');
+    });
+  }
+
+  function queueSave(){
+    if(applyingRemote) return; // don't echo back a change we just received
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(saveState, 350);
+  }
+
+  async function saveState(){
+    if(!docRef) return;
+    try{
+      await docRef.set(Object.assign({}, state, {
+        accessCode: SHARED_ACCESS_CODE,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      }));
+    }catch(e){
+      console.error('Save failed', e);
+      alert('Could not save your change. Check your internet connection and try again.');
+    }
+  }
+
+  // ---------- helpers ----------
+  function teamById(id){ return state.teams.find(t=>t.id===id); }
+  function camperById(id){ return state.campers.find(c=>c.id===id); }
+  function eventById(id){ return state.events.find(e=>e.id===id); }
+  function assignmentsForCamper(camperId){ return state.assignments.filter(a=>a.camperId===camperId); }
+  function assignmentsForEvent(eventId){ return state.assignments.filter(a=>a.eventId===eventId); }
+
+  function camperConflict(camperId, targetEventId){
+    const target = eventById(targetEventId);
+    if(!target || !target.timeSlot) return null;
+    const mine = assignmentsForCamper(camperId);
+    for(const a of mine){
+      if(a.eventId===targetEventId) continue;
+      const ev = eventById(a.eventId);
+      if(ev && ev.timeSlot && ev.timeSlot===target.timeSlot) return ev;
+    }
+    return null;
+  }
+
+  function countConflicts(){
+    let n=0;
+    for(const c of state.campers){
+      const seen = {};
+      for(const a of assignmentsForCamper(c.id)){
+        const ev = eventById(a.eventId);
+        if(!ev || !ev.timeSlot) continue;
+        if(seen[ev.timeSlot]) n++;
+        seen[ev.timeSlot]=true;
+      }
+    }
+    return n;
+  }
+
+  function isAssigned(camperId,eventId){
+    return state.assignments.some(a=>a.camperId===camperId && a.eventId===eventId);
+  }
+
+  function toggleAssignment(camperId,eventId){
+    const existing = state.assignments.find(a=>a.camperId===camperId && a.eventId===eventId);
+    if(existing){
+      state.assignments = state.assignments.filter(a=>a!==existing);
+    } else {
+      const ev = eventById(eventId);
+      if(ev && ev.capacity){
+        const count = assignmentsForEvent(eventId).length;
+        if(count>=ev.capacity){
+          alert('This event is at capacity ('+ev.capacity+'). Remove someone before adding another camper.');
+          return;
+        }
+      }
+      state.assignments.push({id:uid('a'),camperId,eventId});
+    }
+    queueSave();
+    renderAll();
+  }
+
+  // ---------- rendering: stats ----------
+  function renderStats(){
+    const myTeamId = currentTeamId();
+    const scope = (!isAdmin() && myTeamId) ? state.campers.filter(c=>c.teamId===myTeamId) : state.campers;
+    document.getElementById('statCampers').textContent = scope.length;
+    document.getElementById('statEvents').textContent = state.events.length;
+    const totalPossible = scope.length;
+    const assignedCampers = scope.filter(c=>assignmentsForCamper(c.id).length>0).length;
+    const pct = totalPossible ? Math.round((assignedCampers/totalPossible)*100) : 0;
+    document.getElementById('statAssigned').textContent = pct+'%';
+    let conflicts = 0;
+    for(const c of scope){
+      const seen = {};
+      for(const a of assignmentsForCamper(c.id)){
+        const ev = eventById(a.eventId);
+        if(!ev || !ev.timeSlot) continue;
+        if(seen[ev.timeSlot]) conflicts++;
+        seen[ev.timeSlot]=true;
+      }
+    }
+    const conflictEl = document.getElementById('statConflicts');
+    conflictEl.textContent = conflicts;
+    conflictEl.classList.toggle('alert', conflicts>0);
+  }
+
+  // ---------- rendering: teams ----------
+  function renderTeams(){
+    document.getElementById('teamAddRow').style.display = isAdmin() ? 'flex' : 'none';
+    const list = document.getElementById('teamList');
+    if(state.teams.length===0){
+      list.innerHTML = '<div class="empty-hint">No teams yet. Add your first team above.</div>';
+    } else {
+      list.innerHTML = state.teams.map(t=>{
+        const count = state.campers.filter(c=>c.teamId===t.id).length;
+        const removeBtn = isAdmin() ? `<button class="icon-btn" data-action="delTeam" data-id="${t.id}">Remove</button>` : '';
+        const codeText = isAdmin() ? `<span class="meta" style="font-family:var(--font-mono);">code: ${t.code?escapeHtml(t.code):'<em>none set</em>'}</span>` : '';
+        return `<div class="list-row">
+          <div><span class="chip" style="background:${t.color}"><span class="sw"></span>${escapeHtml(t.name)}</span> <span class="meta">${count} camper${count===1?'':'s'}</span> ${codeText}</div>
+          ${removeBtn}
+        </div>`;
+      }).join('');
+    }
+    // refresh team selects
+    const selects = [document.getElementById('camperTeamInput'), document.getElementById('bulkTeamInput')];
+    selects.forEach(sel=>{
+      const cur = sel.value;
+      sel.innerHTML = state.teams.map(t=>`<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('') || '<option value="">Add a team first</option>';
+      if(state.teams.some(t=>t.id===cur)) sel.value = cur;
+    });
+    document.getElementById('camperTeamField').style.display = isAdmin() ? 'block' : 'none';
+    document.getElementById('bulkTeamField').style.display = isAdmin() ? 'block' : 'none';
+
+    const filterTeams = [document.getElementById('camperFilterTeam'), document.getElementById('assignTeamFilter')];
+    filterTeams.forEach(sel=>{
+      const cur = sel.value;
+      sel.innerHTML = '<option value="">All teams</option>' + state.teams.map(t=>`<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('');
+      sel.value = cur;
+      sel.style.display = isAdmin() ? 'block' : 'none';
+    });
+  }
+
+  // ---------- rendering: campers ----------
+  function renderCampers(){
+    const filterTeam = isAdmin() ? document.getElementById('camperFilterTeam').value : currentTeamId();
+    const search = document.getElementById('camperSearch').value.trim().toLowerCase();
+    const list = document.getElementById('camperList');
+    let campers = state.campers.slice();
+    if(filterTeam) campers = campers.filter(c=>c.teamId===filterTeam);
+    if(search) campers = campers.filter(c=>c.name.toLowerCase().includes(search));
+    campers.sort((a,b)=>a.name.localeCompare(b.name));
+    if(campers.length===0){
+      list.innerHTML = '<div class="empty-hint">No campers match yet.</div>';
+    } else {
+      list.innerHTML = campers.map(c=>{
+        const team = teamById(c.teamId);
+        const chip = team ? `<span class="chip" style="background:${team.color}"><span class="sw"></span>${escapeHtml(team.name)}</span>` : '<span class="meta">No team</span>';
+        const evCount = assignmentsForCamper(c.id).length;
+        return `<div class="list-row">
+          <div>${escapeHtml(c.name)} ${chip} <span class="meta">${evCount} event${evCount===1?'':'s'}</span></div>
+          <button class="icon-btn" data-action="delCamper" data-id="${c.id}">Remove</button>
+        </div>`;
+      }).join('');
+    }
+  }
+
+  // ---------- rendering: events ----------
+  function renderEvents(){
+    document.getElementById('eventAddSection').style.display = isAdmin() ? 'block' : 'none';
+    const list = document.getElementById('eventList');
+    const slotSet = new Set(state.events.map(e=>e.timeSlot).filter(Boolean));
+    document.getElementById('slotOptions').innerHTML = Array.from(slotSet).map(s=>`<option value="${escapeHtml(s)}">`).join('');
+    if(state.events.length===0){
+      list.innerHTML = '<div class="empty-hint">No events yet.'+(isAdmin()?' Add your first event above.':' An admin needs to add events first.')+'</div>';
+    } else {
+      const sorted = state.events.slice().sort((a,b)=> (a.timeSlot||'').localeCompare(b.timeSlot||'') || a.name.localeCompare(b.name));
+      list.innerHTML = sorted.map(e=>{
+        const count = assignmentsForEvent(e.id).length;
+        const capText = e.capacity ? `${count}/${e.capacity}` : `${count} signed up`;
+        const removeBtn = isAdmin() ? `<button class="icon-btn" data-action="delEvent" data-id="${e.id}">Remove</button>` : '';
+        return `<div class="list-row">
+          <div><strong>${escapeHtml(e.name)}</strong> <span class="meta">${e.timeSlot?escapeHtml(e.timeSlot):'No time slot'}${e.location?' &middot; '+escapeHtml(e.location):''} &middot; ${capText}</span></div>
+          ${removeBtn}
+        </div>`;
+      }).join('');
+    }
+    // assign event select
+    const sel = document.getElementById('assignEventSelect');
+    const cur = sel.value;
+    const sorted = state.events.slice().sort((a,b)=> (a.timeSlot||'').localeCompare(b.timeSlot||'') || a.name.localeCompare(b.name));
+    sel.innerHTML = sorted.map(e=>`<option value="${e.id}">${escapeHtml(e.name)}${e.timeSlot?' &middot; '+escapeHtml(e.timeSlot):''}</option>`).join('') || '<option value="">Add an event first</option>';
+    if(state.events.some(e=>e.id===cur)) sel.value = cur;
+  }
+
+  // ---------- rendering: assign tab ----------
+  function renderAssignTab(){
+    const eventId = document.getElementById('assignEventSelect').value;
+    const summary = document.getElementById('eventSummary');
+    const listEl = document.getElementById('assignCamperList');
+    if(!eventId){
+      summary.innerHTML='';
+      listEl.innerHTML = '<div class="empty-hint">'+(isAdmin() ? 'Add an event on the Setup tab, then come back here to assign campers.' : 'No events available yet &mdash; check back once an admin has added some.')+'</div>';
+      return;
+    }
+    const ev = eventById(eventId);
+    const count = assignmentsForEvent(eventId).length;
+    const full = ev.capacity && count>=ev.capacity;
+    summary.innerHTML = `<div class="event-summary">
+      <strong>${escapeHtml(ev.name)}</strong>
+      <span class="meta">${ev.timeSlot?escapeHtml(ev.timeSlot):'No time slot'}</span>
+      ${ev.location?`<span class="meta">${escapeHtml(ev.location)}</span>`:''}
+      <span class="cap ${full?'full':''}">${ev.capacity ? count+' / '+ev.capacity+' spots' : count+' signed up'}</span>
+    </div>`;
+
+    document.getElementById('assignTeamFilter').style.display = isAdmin() ? 'block' : 'none';
+    const filterTeam = isAdmin() ? document.getElementById('assignTeamFilter').value : currentTeamId();
+    const search = document.getElementById('assignSearch').value.trim().toLowerCase();
+    let campers = state.campers.slice();
+    if(filterTeam) campers = campers.filter(c=>c.teamId===filterTeam);
+    if(search) campers = campers.filter(c=>c.name.toLowerCase().includes(search));
+    campers.sort((a,b)=>a.name.localeCompare(b.name));
+
+    if(campers.length===0){
+      listEl.innerHTML = '<div class="empty-hint">No campers match this filter.</div>';
+      return;
+    }
+
+    listEl.innerHTML = campers.map(c=>{
+      const on = isAssigned(c.id, eventId);
+      const conflict = !on ? camperConflict(c.id, eventId) : null;
+      const team = teamById(c.teamId);
+      const chip = team ? `<span class="chip" style="background:${team.color}"><span class="sw"></span>${escapeHtml(team.name)}</span>` : '';
+      return `<div class="camper-row ${conflict?'conflict':''}">
+        <div class="name">${escapeHtml(c.name)} ${chip}</div>
+        ${conflict?`<span class="warn">Already in ${escapeHtml(conflict.name)} (${escapeHtml(conflict.timeSlot)})</span>`:''}
+        <div class="toggle ${on?'on':''}" data-action="toggleAssign" data-camper="${c.id}" data-event="${eventId}"><div class="knob"></div></div>
+      </div>`;
+    }).join('');
+  }
+
+  // ---------- rendering: schedule tab ----------
+  let scheduleView = 'camper';
+  function renderSchedule(){
+    const el = document.getElementById('scheduleView');
+    const myTeamId = currentTeamId();
+    if(scheduleView==='camper'){
+      let campers = state.campers.slice();
+      if(!isAdmin() && myTeamId) campers = campers.filter(c=>c.teamId===myTeamId);
+      if(campers.length===0){ el.innerHTML='<div class="empty-hint">No campers yet.</div>'; return; }
+      const rows = campers.sort((a,b)=>a.name.localeCompare(b.name)).map(c=>{
+        const team = teamById(c.teamId);
+        const chip = team ? `<span class="chip" style="background:${team.color}"><span class="sw"></span>${escapeHtml(team.name)}</span>` : '';
+        const assigns = assignmentsForCamper(c.id).map(a=>{
+          const ev = eventById(a.eventId);
+          if(!ev) return '';
+          return `<span class="slot-chip">${escapeHtml(ev.name)}${ev.timeSlot?' &middot; '+escapeHtml(ev.timeSlot):''}<button data-action="toggleAssign" data-camper="${c.id}" data-event="${ev.id}" title="Remove">&times;</button></span>`;
+        }).join('') || '<span class="meta">Not scheduled yet</span>';
+        return `<tr><td>${escapeHtml(c.name)}</td><td>${chip}</td><td>${assigns}</td></tr>`;
+      }).join('');
+      el.innerHTML = `<table class="sched"><thead><tr><th>Camper</th><th>Team</th><th>Events</th></tr></thead><tbody>${rows}</tbody></table>`;
+    } else if(scheduleView==='event'){
+      if(state.events.length===0){ el.innerHTML='<div class="empty-hint">No events yet.</div>'; return; }
+      const sorted = state.events.slice().sort((a,b)=> (a.timeSlot||'').localeCompare(b.timeSlot||'') || a.name.localeCompare(b.name));
+      const rows = sorted.map(ev=>{
+        let entries = assignmentsForEvent(ev.id);
+        if(!isAdmin() && myTeamId) entries = entries.filter(a=>{ const c=camperById(a.camperId); return c && c.teamId===myTeamId; });
+        const roster = entries.map(a=>{
+          const c = camperById(a.camperId);
+          return c ? escapeHtml(c.name) : '';
+        }).filter(Boolean).sort().join(', ') || `<span class="meta">${isAdmin() ? 'No one signed up' : 'No one from your team yet'}</span>`;
+        return `<tr><td><strong>${escapeHtml(ev.name)}</strong></td><td>${ev.timeSlot?escapeHtml(ev.timeSlot):''}</td><td>${roster}</td></tr>`;
+      }).join('');
+      el.innerHTML = `<table class="sched"><thead><tr><th>Event</th><th>Time slot</th><th>${isAdmin()?'Roster':'Your roster'}</th></tr></thead><tbody>${rows}</tbody></table>`;
+    } else if(scheduleView==='team'){
+      let teams = state.teams.slice();
+      if(!isAdmin() && myTeamId) teams = teams.filter(t=>t.id===myTeamId);
+      if(teams.length===0){ el.innerHTML='<div class="empty-hint">No teams yet.</div>'; return; }
+      const blocks = teams.map(t=>{
+        const members = state.campers.filter(c=>c.teamId===t.id).sort((a,b)=>a.name.localeCompare(b.name));
+        const rows = members.map(c=>{
+          const assigns = assignmentsForCamper(c.id).map(a=>{
+            const ev = eventById(a.eventId);
+            return ev ? escapeHtml(ev.name)+(ev.timeSlot?' ('+escapeHtml(ev.timeSlot)+')':'') : '';
+          }).filter(Boolean).join(', ') || '<span class="meta">Not scheduled</span>';
+          return `<tr><td>${escapeHtml(c.name)}</td><td>${assigns}</td></tr>`;
+        }).join('');
+        return `<div style="margin-bottom:18px;">
+          <div class="chip" style="background:${t.color};margin-bottom:8px;"><span class="sw"></span>${escapeHtml(t.name)}</div>
+          <table class="sched"><thead><tr><th>Camper</th><th>Events</th></tr></thead><tbody>${rows||'<tr><td colspan=2 class="meta">No campers on this team</td></tr>'}</tbody></table>
+        </div>`;
+      }).join('');
+      el.innerHTML = blocks;
+    }
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  }
+
+  function renderAll(){
+    renderRoleIndicator();
+    document.getElementById('resetCard').style.display = isAdmin() ? 'block' : 'none';
+    renderTeams();
+    renderCampers();
+    renderEvents();
+    renderAssignTab();
+    renderSchedule();
+    renderStats();
+  }
+
+  // ---------- CSV export ----------
+  function exportCsv(){
+    const rows = [['Camper','Team','Event','Time slot','Location']];
+    state.campers.slice().sort((a,b)=>a.name.localeCompare(b.name)).forEach(c=>{
+      const team = teamById(c.teamId);
+      const assigns = assignmentsForCamper(c.id);
+      if(assigns.length===0){
+        rows.push([c.name, team?team.name:'', '', '', '']);
+      } else {
+        assigns.forEach(a=>{
+          const ev = eventById(a.eventId);
+          rows.push([c.name, team?team.name:'', ev?ev.name:'', ev?ev.timeSlot||'':'', ev?ev.location||'':'']);
+        });
+      }
+    });
+    const csv = rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv],{type:'text/csv'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href=url; a.download='color-war-schedule.csv';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  // ---------- event wiring ----------
+  document.querySelectorAll('.tab-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById(btn.dataset.tab+'Panel').classList.add('active');
+      if(btn.dataset.tab==='assign') renderAssignTab();
+      if(btn.dataset.tab==='schedule') renderSchedule();
+    });
+  });
+
+  document.getElementById('campName').addEventListener('input', e=>{
+    state.campName = e.target.value;
+    queueSave();
+  });
+
+  document.getElementById('addTeamBtn').addEventListener('click', ()=>{
+    if(!isAdmin()) return;
+    const nameInput = document.getElementById('teamNameInput');
+    const colorInput = document.getElementById('teamColorInput');
+    const codeInput = document.getElementById('teamCodeInput');
+    const name = nameInput.value.trim();
+    if(!name) return;
+    state.teams.push({id:uid('team'), name, color:colorInput.value, code:codeInput.value.trim()});
+    nameInput.value=''; codeInput.value='';
+    queueSave(); renderAll();
+  });
+
+  document.getElementById('addCamperBtn').addEventListener('click', ()=>{
+    const nameInput = document.getElementById('camperNameInput');
+    const teamSel = document.getElementById('camperTeamInput');
+    const name = nameInput.value.trim();
+    if(!name) return;
+    const teamId = isAdmin() ? (teamSel.value||null) : currentTeamId();
+    if(!isAdmin() && !teamId) return;
+    state.campers.push({id:uid('camper'), name, teamId});
+    nameInput.value='';
+    queueSave(); renderAll();
+  });
+
+  document.getElementById('bulkAddBtn').addEventListener('click', ()=>{
+    const box = document.getElementById('bulkCamperInput');
+    const teamSel = document.getElementById('bulkTeamInput');
+    const names = box.value.split('\n').map(s=>s.trim()).filter(Boolean);
+    const teamId = isAdmin() ? (teamSel.value||null) : currentTeamId();
+    if(!isAdmin() && !teamId) return;
+    names.forEach(name=>{
+      state.campers.push({id:uid('camper'), name, teamId});
+    });
+    box.value='';
+    queueSave(); renderAll();
+  });
+
+  document.getElementById('addEventBtn').addEventListener('click', ()=>{
+    if(!isAdmin()) return;
+    const nameInput = document.getElementById('eventNameInput');
+    const slotInput = document.getElementById('eventSlotInput');
+    const locInput = document.getElementById('eventLocInput');
+    const capInput = document.getElementById('eventCapInput');
+    const name = nameInput.value.trim();
+    if(!name) return;
+    state.events.push({
+      id:uid('event'), name,
+      timeSlot: slotInput.value.trim(),
+      location: locInput.value.trim(),
+      capacity: capInput.value ? parseInt(capInput.value,10) : null
+    });
+    nameInput.value=''; slotInput.value=''; locInput.value=''; capInput.value='';
+    queueSave(); renderAll();
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', ()=>{
+    if(!isAdmin()) return;
+    if(!confirm('This will permanently clear all teams, campers, events, and assignments for everyone. Continue?')) return;
+    state = {campName:'', teams:[], campers:[], events:[], assignments:[]};
+    document.getElementById('campName').value='';
+    queueSave(); renderAll();
+  });
+
+  document.getElementById('accessCodeSubmit').addEventListener('click', attemptAccessCode);
+  document.getElementById('accessCodeInput').addEventListener('keydown', (e)=>{
+    if(e.key==='Enter') attemptAccessCode();
+  });
+
+  document.getElementById('roleGateCancel').addEventListener('click', ()=>{
+    document.getElementById('roleGate').style.display='none';
+  });
+
+  document.getElementById('roleIndicator').addEventListener('click', openRoleGate);
+
+  ['camperFilterTeam','camperSearch'].forEach(id=>{
+    document.getElementById(id).addEventListener('input', renderCampers);
+  });
+  ['assignEventSelect','assignTeamFilter','assignSearch'].forEach(id=>{
+    document.getElementById(id).addEventListener('input', renderAssignTab);
+    document.getElementById(id).addEventListener('change', renderAssignTab);
+  });
+
+  document.getElementById('exportCsvBtn').addEventListener('click', exportCsv);
+  document.getElementById('printBtn').addEventListener('click', ()=>window.print());
+
+  document.querySelectorAll('.sched-toggle button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.sched-toggle button').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      scheduleView = btn.dataset.view;
+      renderSchedule();
+    });
+  });
+
+  // delegated clicks for dynamic rows
+  document.getElementById('app').addEventListener('click', (e)=>{
+    const target = e.target.closest('[data-action]');
+    if(!target) return;
+    const action = target.dataset.action;
+    if(action==='delTeam'){
+      if(!isAdmin()) return;
+      const id = target.dataset.id;
+      if(confirm('Remove this team? Campers on it will become unassigned to a team.')){
+        state.teams = state.teams.filter(t=>t.id!==id);
+        state.campers.forEach(c=>{ if(c.teamId===id) c.teamId=null; });
+        queueSave(); renderAll();
+      }
+    } else if(action==='delCamper'){
+      const id = target.dataset.id;
+      const camper = camperById(id);
+      if(!isAdmin() && (!camper || camper.teamId!==currentTeamId())) return;
+      if(confirm('Remove this camper and all their event assignments?')){
+        state.campers = state.campers.filter(c=>c.id!==id);
+        state.assignments = state.assignments.filter(a=>a.camperId!==id);
+        queueSave(); renderAll();
+      }
+    } else if(action==='delEvent'){
+      if(!isAdmin()) return;
+      const id = target.dataset.id;
+      if(confirm('Remove this event and all its assignments?')){
+        state.events = state.events.filter(ev=>ev.id!==id);
+        state.assignments = state.assignments.filter(a=>a.eventId!==id);
+        queueSave(); renderAll();
+      }
+    } else if(action==='toggleAssign'){
+      const camper = camperById(target.dataset.camper);
+      if(!isAdmin() && (!camper || camper.teamId!==currentTeamId())) return;
+      toggleAssignment(target.dataset.camper, target.dataset.event);
+    }
+  });
+
+  loadRole();
+  if(isConfigured()){
+    attachListener();
+  } else {
+    document.getElementById('setupWarning').style.display='block';
+    renderAll();
+  }
+  if(!currentRole){ openRoleGate(); }
+})();
+</script>
+</body>
+</html>
