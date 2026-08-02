@@ -23,6 +23,8 @@
     --green-tint:#E4EFE9;
     --red:#C7473D;
     --red-tint:#FBEAE8;
+    --assign-green:#DCEEE1;
+    --assign-blue:#DCE7F4;
     --radius:10px;
     --font-display:'Teko',sans-serif;
     --font-body:'Inter',sans-serif;
@@ -197,6 +199,37 @@
   .period-toggle-btn .chevron{font-size:20px;color:var(--ink-soft);flex:0 0 auto;}
   .period-body{padding:4px 20px 18px;border-top:1px solid var(--line);}
 
+  .assignment-layout{display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap;}
+  .roster-panel{flex:0 0 250px;max-height:560px;overflow-y:auto;border:1px solid var(--line);border-radius:8px;padding:6px 10px;background:var(--paper);}
+  .roster-person{
+    display:flex;align-items:center;gap:6px;padding:6px 4px;border-bottom:1px solid var(--line);
+    font-size:13px;cursor:grab;border-radius:5px;
+  }
+  .roster-person:last-child{border-bottom:none;}
+  .roster-person.status-normal{background:var(--assign-green);}
+  .roster-person.status-over{background:var(--assign-blue);}
+  .roster-person .kind-tag{font-size:10px;color:var(--ink-soft);margin-left:auto;text-transform:uppercase;letter-spacing:0.3px;}
+
+  .activities-panel{flex:1;min-width:280px;max-height:560px;overflow-y:auto;padding-right:4px;}
+  .activities-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;}
+  .activity-card{border:1px solid var(--line);border-radius:8px;padding:12px;background:var(--paper-2);}
+  .activity-card.drag-over{border-color:var(--gold-dark);box-shadow:0 0 0 2px var(--gold-tint);}
+  .activity-card-header{display:flex;justify-content:space-between;align-items:flex-start;gap:6px;margin-bottom:4px;}
+  .activity-card-header strong{font-size:14.5px;}
+  .cap-badge{font-family:var(--font-mono);font-size:11.5px;padding:2px 7px;border-radius:100px;background:var(--paper);border:1px solid var(--line);white-space:nowrap;}
+  .cap-badge.over{background:var(--assign-blue);border-color:#9FC2E0;}
+  .assign-chips{display:flex;flex-wrap:wrap;gap:4px;margin:8px 0;}
+  .assign-chip{
+    display:inline-flex;align-items:center;gap:5px;font-size:11.5px;background:var(--paper);
+    border:1px solid var(--line);padding:2px 6px 2px 8px;border-radius:100px;
+  }
+  .assign-chip button{background:none;border:none;color:var(--ink-soft);cursor:pointer;font-size:12px;padding:0;}
+  .assign-chip button:hover{color:var(--red);}
+  .activity-card input[type=text]{margin-bottom:0;font-size:12.5px;padding:6px 8px;}
+  .roster-legend{display:flex;gap:16px;flex-wrap:wrap;font-size:11.5px;color:var(--ink-soft);margin:8px 0 14px;}
+  .roster-legend span{display:inline-flex;align-items:center;gap:5px;}
+  .roster-legend .sw-box{width:11px;height:11px;border-radius:3px;display:inline-block;border:1px solid var(--line);}
+
   .toolbar{display:flex;justify-content:flex-end;gap:8px;margin-bottom:14px;}
   .footer-note{text-align:center;font-size:11.5px;color:var(--ink-soft);margin-top:28px;}
   ::placeholder{color:#A9AFA6;}
@@ -335,9 +368,10 @@
   <div class="panel" id="assignmentsPanel">
     <div class="card" id="periodAddSection">
       <h2>Add a period</h2>
-      <p class="sub">Tag which divisions compete during this period &mdash; activities you add below can only be tagged with divisions selected here.</p>
+      <p class="sub">Tag which divisions compete during this period, and which day it happens on. Activities you add below can only be tagged with divisions selected here.</p>
       <div class="row" style="align-items:flex-end;">
         <div style="flex:1;"><label>Period label</label><input type="text" id="periodLabelInput" placeholder="e.g. Period 1"></div>
+        <div style="flex:0 0 130px;"><label>Day</label><select id="periodDayInput"><option value="1">Day 1</option><option value="2">Day 2</option><option value="3">Day 3</option></select></div>
         <div><button class="btn gold" id="addPeriodBtn">Add period</button></div>
       </div>
       <label>Competing divisions</label>
@@ -348,6 +382,20 @@
         <label><input type="checkbox" value="Seniors"> Seniors</label>
         <label><input type="checkbox" value="7th Grade"> 7th Grade</label>
       </div>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+        <input type="checkbox" id="periodAllowMultipleInput" style="width:auto;margin:0;">
+        Allow each person to be assigned to more than one activity in this period
+      </label>
+    </div>
+
+    <div class="filter-bar">
+      <select id="assignmentDivisionFilter"><option value="">All divisions</option>
+        <option value="Pinecones">Pinecones</option>
+        <option value="Voyagers">Voyagers</option>
+        <option value="Juniors">Juniors</option>
+        <option value="Seniors">Seniors</option>
+        <option value="7th Grade">7th Grade</option>
+      </select>
     </div>
 
     <div id="assignmentsContext"></div>
@@ -403,7 +451,8 @@
       ],
       scheduleCells:{},
       assignmentProgress:{},
-      periods:[]
+      periods:[],
+      periodAssignments:{}
     };
   }
   function normalizeState(data){
@@ -430,13 +479,16 @@
       assignmentProgress: data.assignmentProgress||{},
       periods: (data.periods||[]).map(p=>({
         id:p.id, label:p.label||'', divisions:p.divisions||[],
+        day: p.day||1,
+        allowMultiple: !!p.allowMultiple,
         activities:(p.activities||[]).map(a=>({
           id:a.id, title:a.title||'', location:a.location||'', description:a.description||'',
           camperCount: (typeof a.camperCount==='number') ? a.camperCount : (parseInt(a.camperCount,10)||0),
           flexible: !!a.flexible,
           divisions: a.divisions||[]
         }))
-      }))
+      })),
+      periodAssignments: data.periodAssignments||{}
     };
   }
 
@@ -585,6 +637,60 @@
     if(pct>=100) return 'var(--green-tint)';
     if(pct>0) return 'var(--gold-tint)';
     return 'var(--red-tint)';
+  }
+
+  // ---------- period activity assignment ----------
+  function personById(id){
+    const c = camperById(id);
+    if(c) return Object.assign({kind:'camper'}, c);
+    const co = state.counselors.find(x=>x.id===id);
+    if(co) return Object.assign({kind:'counselor'}, co);
+    return null;
+  }
+  function periodAssignKey(periodId, activityId, teamId){ return periodId+'_'+activityId+'_'+teamId; }
+  function getActivityAssignees(periodId, activityId, teamId){
+    return state.periodAssignments[periodAssignKey(periodId, activityId, teamId)] || [];
+  }
+  function activityStatus(activity, count){
+    return count > activity.camperCount ? 'over' : 'normal';
+  }
+  function eligiblePeopleForPeriod(period, teamId){
+    const groupIds = new Set(state.groups.filter(g=>g.teamId===teamId && period.divisions.includes(g.division)).map(g=>g.id));
+    const campers = state.campers.filter(c=>c.teamId===teamId && groupIds.has(c.groupId)).map(c=>Object.assign({kind:'camper'},c));
+    const counselors = state.counselors.filter(c=>c.teamId===teamId && groupIds.has(c.groupId)).map(c=>Object.assign({kind:'counselor'},c));
+    return campers.concat(counselors).sort((a,b)=>a.name.localeCompare(b.name));
+  }
+  function assignPersonToActivity(period, activity, teamId, personId){
+    if(!period.allowMultiple){
+      period.activities.forEach(a=>{
+        if(a.id===activity.id) return;
+        const key = periodAssignKey(period.id, a.id, teamId);
+        if(state.periodAssignments[key]){
+          state.periodAssignments[key] = state.periodAssignments[key].filter(id=>id!==personId);
+        }
+      });
+    }
+    const key = periodAssignKey(period.id, activity.id, teamId);
+    state.periodAssignments[key] = state.periodAssignments[key] || [];
+    if(!state.periodAssignments[key].includes(personId)) state.periodAssignments[key].push(personId);
+    queueSave();
+  }
+  function unassignPersonFromActivity(period, activity, teamId, personId){
+    const key = periodAssignKey(period.id, activity.id, teamId);
+    if(state.periodAssignments[key]) state.periodAssignments[key] = state.periodAssignments[key].filter(id=>id!==personId);
+    queueSave();
+  }
+  function personAssignmentColorStatus(period, teamId, personId){
+    let sawOver=false, sawNormal=false;
+    period.activities.forEach(a=>{
+      const list = getActivityAssignees(period.id, a.id, teamId);
+      if(list.includes(personId)){
+        if(activityStatus(a, list.length)==='over') sawOver=true; else sawNormal=true;
+      }
+    });
+    if(sawOver) return 'over';
+    if(sawNormal) return 'normal';
+    return 'none';
   }
 
   // ---------- stats ----------
@@ -940,11 +1046,14 @@
 
   // ---------- admin: period + activity management ----------
   function renderPeriodsAdmin(el){
-    if(state.periods.length===0){
-      el.innerHTML = '<div class="empty-hint">No periods yet. Add one above.</div>';
+    const divFilter = document.getElementById('assignmentDivisionFilter').value;
+    let periods = state.periods.slice();
+    if(divFilter) periods = periods.filter(p=>p.divisions.includes(divFilter));
+    if(periods.length===0){
+      el.innerHTML = '<div class="empty-hint">No periods match yet.</div>';
       return;
     }
-    el.innerHTML = state.periods.map(p=>renderPeriodCardAdmin(p)).join('');
+    el.innerHTML = periods.map(p=>renderPeriodCardAdmin(p)).join('');
   }
 
   function renderPeriodCardAdmin(period){
@@ -956,7 +1065,12 @@
 
     return `<div class="card">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;">
-        <div><strong style="font-family:var(--font-display);font-size:24px;">${escapeHtml(period.label)}</strong> ${divChips}</div>
+        <div>
+          <strong style="font-family:var(--font-display);font-size:24px;">${escapeHtml(period.label)}</strong>
+          <span class="meta">Day ${period.day}</span>
+          ${divChips}
+          <span class="meta">${period.allowMultiple ? 'Multiple activities allowed per person' : 'One activity per person'}</span>
+        </div>
         <button class="icon-btn" data-action="delPeriod" data-id="${period.id}">Remove period</button>
       </div>
 
@@ -994,49 +1108,96 @@
 
   // ---------- captains: period browser ----------
   function renderPeriodsCaptain(el){
-    if(state.periods.length===0){
-      el.innerHTML = '<div class="empty-hint">No periods yet &mdash; check back once an admin sets them up.</div>';
+    const divFilter = document.getElementById('assignmentDivisionFilter').value;
+    let periods = state.periods.slice();
+    if(divFilter) periods = periods.filter(p=>p.divisions.includes(divFilter));
+    if(periods.length===0){
+      el.innerHTML = '<div class="empty-hint">No periods match yet.</div>';
       return;
     }
     const myTeamId = currentTeamId();
-    el.innerHTML = state.periods.map(p=>{
+    el.innerHTML = periods.map(p=>{
       const expanded = expandedPeriods.has(p.id);
       const divChips = p.divisions.map(d=>`<span class="chip" style="background:${DIVISION_COLORS[d]}"><span class="sw"></span>${escapeHtml(d)}</span>`).join(' ');
       let body = '';
       if(expanded){
-        const activityRows = p.activities.map(a=>{
-          const divChips2 = (a.divisions||[]).map(d=>`<span class="chip" style="background:${DIVISION_COLORS[d]}">${escapeHtml(d)}</span>`).join(' ');
-          return `<div class="list-row">
-            <div>
-              <strong>${escapeHtml(a.title)}</strong>
-              <span class="meta">${a.location?escapeHtml(a.location)+' &middot; ':''}${activityCountLabel(a)} camper${a.camperCount===1?'':'s'}</span>
-              ${a.description?`<div class="meta">${escapeHtml(a.description)}</div>`:''}
-              ${divChips2?`<div style="margin-top:4px;">${divChips2}</div>`:''}
-            </div>
-          </div>`;
-        }).join('') || '<div class="empty-hint">No activities yet for this period.</div>';
-
-        const myGroups = state.groups
-          .filter(g=>g.teamId===myTeamId && p.divisions.includes(g.division))
-          .sort((a,b)=>DIVISION_ORDER.indexOf(a.division)-DIVISION_ORDER.indexOf(b.division) || Number(a.number)-Number(b.number));
-        const groupChips = myGroups.map(g=>`<span class="chip" style="background:${DIVISION_COLORS[g.division]}">Group ${escapeHtml(String(g.number))}</span>`).join(' ')
-          || '<span class="meta">None of your groups are in this period\u2019s divisions yet.</span>';
-
-        body = `<div class="period-body">
-          <div class="subhead" style="margin-top:10px;">Activities</div>
-          ${activityRows}
-          <div class="subhead" style="margin-top:16px;">Your groups competing</div>
-          <div>${groupChips}</div>
-        </div>`;
+        body = renderPeriodAssignmentBody(p, myTeamId);
       }
       return `<div class="card period-card">
         <button class="period-toggle-btn" data-action="togglePeriodExpand" data-id="${p.id}">
-          <span>${escapeHtml(p.label)} &nbsp; ${divChips}</span>
+          <span>${escapeHtml(p.label)} <span class="meta" style="font-size:14px;">Day ${p.day}</span> &nbsp; ${divChips}</span>
           <span class="chevron">${expanded?'\u2212':'+'}</span>
         </button>
         ${body}
       </div>`;
     }).join('');
+  }
+
+  function renderPeriodAssignmentBody(period, myTeamId){
+    const myGroups = state.groups
+      .filter(g=>g.teamId===myTeamId && period.divisions.includes(g.division))
+      .sort((a,b)=>DIVISION_ORDER.indexOf(a.division)-DIVISION_ORDER.indexOf(b.division) || Number(a.number)-Number(b.number));
+    const groupChips = myGroups.map(g=>`<span class="chip" style="background:${DIVISION_COLORS[g.division]}">Group ${escapeHtml(String(g.number))}</span>`).join(' ')
+      || '<span class="meta">None of your groups are in this period\u2019s divisions yet.</span>';
+
+    const people = eligiblePeopleForPeriod(period, myTeamId);
+    const absentKey = 'day'+period.day;
+    const datalistId = 'dl_'+period.id;
+
+    const rosterRows = people.map(p=>{
+      const isAbsent = p.attendance && p.attendance[absentKey];
+      const status = personAssignmentColorStatus(period, myTeamId, p.id);
+      const statusClass = status==='over' ? 'status-over' : (status==='normal' ? 'status-normal' : '');
+      return `<div class="roster-person ${statusClass}" draggable="true" data-person="${p.id}" data-kind="${p.kind}" title="Drag to an activity to assign">
+        <span style="${isAbsent?'color:var(--red);font-weight:600;':''}">${escapeHtml(p.name)}</span>
+        <span class="kind-tag">${p.kind==='counselor'?'Counselor':''}</span>
+      </div>`;
+    }).join('') || '<div class="empty-hint">No campers or counselors from your team are in this period\u2019s divisions.</div>';
+
+    const activityCards = period.activities.map(a=>renderActivityCardCaptain(period, a, myTeamId, datalistId)).join('') || '<div class="empty-hint">No activities yet for this period.</div>';
+
+    const datalistOptions = people.map(p=>`<option value="${escapeHtml(p.name)}">`).join('');
+
+    return `<div class="period-body">
+      <div class="subhead" style="margin-top:10px;">Your groups competing</div>
+      <div style="margin-bottom:14px;">${groupChips}</div>
+
+      <div class="roster-legend">
+        <span><span class="sw-box" style="background:var(--assign-green);"></span> Assigned, within capacity</span>
+        <span><span class="sw-box" style="background:var(--assign-blue);"></span> Assigned, over capacity</span>
+        <span><span class="sw-box" style="background:#fff;border-color:var(--red);"></span> <span style="color:var(--red);">Red name</span> = absent Day ${period.day}</span>
+      </div>
+
+      <div class="assignment-layout">
+        <div class="roster-panel">${rosterRows}</div>
+        <div class="activities-panel">
+          <div class="activities-grid">${activityCards}</div>
+        </div>
+      </div>
+      <datalist id="${datalistId}">${datalistOptions}</datalist>
+    </div>`;
+  }
+
+  function renderActivityCardCaptain(period, activity, teamId, datalistId){
+    const list = getActivityAssignees(period.id, activity.id, teamId);
+    const status = activityStatus(activity, list.length);
+    const countLabel = `${list.length}/${activityCountLabel(activity)}`;
+    const assignedChips = list.map(id=>{
+      const person = personById(id);
+      if(!person) return '';
+      return `<span class="assign-chip">${escapeHtml(person.name)}<button data-action="unassignPerson" data-period="${period.id}" data-activity="${activity.id}" data-person="${id}" title="Remove">&times;</button></span>`;
+    }).join('') || '<span class="meta">No one assigned yet</span>';
+
+    return `<div class="activity-card" data-period="${period.id}" data-activity="${activity.id}">
+      <div class="activity-card-header">
+        <strong>${escapeHtml(activity.title)}</strong>
+        <span class="cap-badge ${status==='over'?'over':''}">${countLabel}</span>
+      </div>
+      ${activity.location?`<div class="meta">${escapeHtml(activity.location)}</div>`:''}
+      ${activity.description?`<div class="meta">${escapeHtml(activity.description)}</div>`:''}
+      <div class="assign-chips">${assignedChips}</div>
+      <input type="text" list="${datalistId}" placeholder="Type a name to assign..." data-role="activityAssignInput" data-period="${period.id}" data-activity="${activity.id}">
+    </div>`;
   }
 
   // ============================================================
@@ -1156,6 +1317,8 @@
     document.getElementById(id).addEventListener('change', renderGroupsList);
   });
 
+  document.getElementById('assignmentDivisionFilter').addEventListener('change', renderAssignmentsPanel);
+
   // ---- blocks ----
   document.getElementById('addBlockBtn').addEventListener('click', ()=>{
     if(!isAdmin()) return;
@@ -1174,11 +1337,60 @@
     if(!isAdmin()) return;
     const labelInput = document.getElementById('periodLabelInput');
     const label = labelInput.value.trim() || ('Period '+(state.periods.length+1));
+    const day = parseInt(document.getElementById('periodDayInput').value,10);
+    const allowMultiple = document.getElementById('periodAllowMultipleInput').checked;
     const checked = Array.from(document.querySelectorAll('#periodDivisionCheckboxes input:checked')).map(cb=>cb.value);
-    state.periods.push({id:uid('period'), label, divisions:checked, activities:[]});
+    state.periods.push({id:uid('period'), label, day, allowMultiple, divisions:checked, activities:[]});
     labelInput.value='';
+    document.getElementById('periodAllowMultipleInput').checked=false;
     document.querySelectorAll('#periodDivisionCheckboxes input').forEach(cb=>cb.checked=false);
     queueSave(); renderAssignmentsPanel();
+  });
+
+  // ---- assignment drag-and-drop ----
+  document.getElementById('periodsList').addEventListener('dragstart', (e)=>{
+    const el = e.target.closest('[data-person]');
+    if(!el) return;
+    e.dataTransfer.setData('text/plain', el.dataset.person);
+  });
+  document.getElementById('periodsList').addEventListener('dragover', (e)=>{
+    const card = e.target.closest('.activity-card');
+    if(card){ e.preventDefault(); card.classList.add('drag-over'); }
+  });
+  document.getElementById('periodsList').addEventListener('dragleave', (e)=>{
+    const card = e.target.closest('.activity-card');
+    if(card) card.classList.remove('drag-over');
+  });
+  document.getElementById('periodsList').addEventListener('drop', (e)=>{
+    const card = e.target.closest('.activity-card');
+    if(!card) return;
+    e.preventDefault();
+    card.classList.remove('drag-over');
+    const personId = e.dataTransfer.getData('text/plain');
+    if(!personId) return;
+    const period = state.periods.find(p=>p.id===card.dataset.period);
+    const activity = period && period.activities.find(a=>a.id===card.dataset.activity);
+    if(!period || !activity) return;
+    assignPersonToActivity(period, activity, currentTeamId(), personId);
+    renderAssignmentsPanel();
+  });
+
+  // ---- assignment autocomplete input ----
+  document.getElementById('periodsList').addEventListener('change', (e)=>{
+    const t = e.target;
+    if(!t.matches('[data-role="activityAssignInput"]')) return;
+    const period = state.periods.find(p=>p.id===t.dataset.period);
+    const activity = period && period.activities.find(a=>a.id===t.dataset.activity);
+    if(!period || !activity) return;
+    const myTeamId = currentTeamId();
+    const eligible = eligiblePeopleForPeriod(period, myTeamId);
+    const typed = t.value.trim().toLowerCase();
+    if(!typed) return;
+    const match = eligible.find(p=>p.name.toLowerCase()===typed);
+    if(match){
+      assignPersonToActivity(period, activity, myTeamId, match.id);
+      renderAssignmentsPanel();
+    }
   });
 
   // ---- reset ----
@@ -1402,6 +1614,12 @@
     } else if(action==='togglePeriodExpand'){
       const id = target.dataset.id;
       if(expandedPeriods.has(id)) expandedPeriods.delete(id); else expandedPeriods.add(id);
+      renderAssignmentsPanel();
+    } else if(action==='unassignPerson'){
+      const period = state.periods.find(p=>p.id===target.dataset.period);
+      const activity = period && period.activities.find(a=>a.id===target.dataset.activity);
+      if(!period || !activity) return;
+      unassignPersonFromActivity(period, activity, currentTeamId(), target.dataset.person);
       renderAssignmentsPanel();
     }
   });
