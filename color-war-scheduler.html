@@ -230,6 +230,14 @@
   .roster-legend span{display:inline-flex;align-items:center;gap:5px;}
   .roster-legend .sw-box{width:11px;height:11px;border-radius:3px;display:inline-block;border:1px solid var(--line);}
 
+  .roster-group{margin-bottom:12px;}
+  .roster-group-header{
+    font-size:11.5px;font-weight:700;letter-spacing:0.2px;padding:4px 8px;
+    border-left:3px solid var(--ink-soft);background:var(--paper-2);border-radius:4px;margin-bottom:2px;
+  }
+  .activity-subsection-label{font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--ink-soft);margin-top:8px;}
+  .division-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-left:3px;vertical-align:middle;}
+
   .toolbar{display:flex;justify-content:flex-end;gap:8px;margin-bottom:14px;}
   .footer-note{text-align:center;font-size:11.5px;color:var(--ink-soft);margin-top:28px;}
   ::placeholder{color:#A9AFA6;}
@@ -647,6 +655,10 @@
     if(co) return Object.assign({kind:'counselor'}, co);
     return null;
   }
+  function personDisplayName(person){
+    const group = groupById(person.groupId);
+    return group ? `${person.name} (${group.number})` : person.name;
+  }
   function periodAssignKey(periodId, activityId, teamId){ return periodId+'_'+activityId+'_'+teamId; }
   function getActivityAssignees(periodId, activityId, teamId){
     return state.periodAssignments[periodAssignKey(periodId, activityId, teamId)] || [];
@@ -660,7 +672,30 @@
     const counselors = state.counselors.filter(c=>c.teamId===teamId && groupIds.has(c.groupId)).map(c=>Object.assign({kind:'counselor'},c));
     return campers.concat(counselors).sort((a,b)=>a.name.localeCompare(b.name));
   }
+  function canAssignPersonToActivity(period, activity, teamId, personId){
+    const person = personById(personId);
+    if(!person) return {ok:false, reason:'not-found'};
+    const group = groupById(person.groupId);
+    if(!group || !(activity.divisions||[]).includes(group.division)){
+      return {ok:false, reason:'division'};
+    }
+    const list = getActivityAssignees(period.id, activity.id, teamId);
+    if(list.includes(personId)) return {ok:true};
+    if(list.length >= activity.camperCount && !activity.flexible){
+      return {ok:false, reason:'full'};
+    }
+    return {ok:true};
+  }
   function assignPersonToActivity(period, activity, teamId, personId){
+    const check = canAssignPersonToActivity(period, activity, teamId, personId);
+    if(!check.ok){
+      if(check.reason==='division'){
+        alert(`${escapeHtml(activity.title)} isn\u2019t open to that person\u2019s division.`);
+      } else if(check.reason==='full'){
+        alert(`${escapeHtml(activity.title)} is already full (${activity.camperCount}). Only activities marked with * can take extra people.`);
+      }
+      return false;
+    }
     if(!period.allowMultiple){
       period.activities.forEach(a=>{
         if(a.id===activity.id) return;
@@ -674,6 +709,7 @@
     state.periodAssignments[key] = state.periodAssignments[key] || [];
     if(!state.periodAssignments[key].includes(personId)) state.periodAssignments[key].push(personId);
     queueSave();
+    return true;
   }
   function unassignPersonFromActivity(period, activity, teamId, personId){
     const key = periodAssignKey(period.id, activity.id, teamId);
@@ -1133,34 +1169,63 @@
     }).join('');
   }
 
-  function renderPeriodAssignmentBody(period, myTeamId){
-    const myGroups = state.groups
-      .filter(g=>g.teamId===myTeamId && period.divisions.includes(g.division))
-      .sort((a,b)=>DIVISION_ORDER.indexOf(a.division)-DIVISION_ORDER.indexOf(b.division) || Number(a.number)-Number(b.number));
-    const groupChips = myGroups.map(g=>`<span class="chip" style="background:${DIVISION_COLORS[g.division]}">Group ${escapeHtml(String(g.number))}</span>`).join(' ')
-      || '<span class="meta">None of your groups are in this period\u2019s divisions yet.</span>';
+  let periodViewFilter = new Map(); // periodId -> selected division ('' = all)
 
-    const people = eligiblePeopleForPeriod(period, myTeamId);
+  function eligibleGroupsForPeriod(period, teamId, divisionFilter){
+    let groups = state.groups.filter(g=>g.teamId===teamId && period.divisions.includes(g.division));
+    if(divisionFilter) groups = groups.filter(g=>g.division===divisionFilter);
+    return groups.sort((a,b)=>DIVISION_ORDER.indexOf(a.division)-DIVISION_ORDER.indexOf(b.division) || Number(a.number)-Number(b.number));
+  }
+
+  function renderPeriodAssignmentBody(period, myTeamId){
+    const divisionFilter = periodViewFilter.get(period.id) || '';
+    const filterOptions = period.divisions.map(d=>`<option value="${escapeHtml(d)}" ${divisionFilter===d?'selected':''}>${escapeHtml(d)}</option>`).join('');
+    const filterSelect = `<select data-role="periodViewFilter" data-period="${period.id}" style="margin-bottom:0;max-width:210px;">
+      <option value="" ${divisionFilter===''?'selected':''}>All divisions</option>
+      ${filterOptions}
+    </select>`;
+
+    const filteredGroups = eligibleGroupsForPeriod(period, myTeamId, divisionFilter);
+    const groupChips = filteredGroups.map(g=>`<span class="chip" style="background:${DIVISION_COLORS[g.division]}">Group ${escapeHtml(String(g.number))}</span>`).join(' ')
+      || '<span class="meta">No groups match this filter.</span>';
+
     const absentKey = 'day'+period.day;
     const datalistId = 'dl_'+period.id;
 
-    const rosterRows = people.map(p=>{
-      const isAbsent = p.attendance && p.attendance[absentKey];
-      const status = personAssignmentColorStatus(period, myTeamId, p.id);
-      const statusClass = status==='over' ? 'status-over' : (status==='normal' ? 'status-normal' : '');
-      return `<div class="roster-person ${statusClass}" draggable="true" data-person="${p.id}" data-kind="${p.kind}" title="Drag to an activity to assign">
-        <span style="${isAbsent?'color:var(--red);font-weight:600;':''}">${escapeHtml(p.name)}</span>
-        <span class="kind-tag">${p.kind==='counselor'?'Counselor':''}</span>
+    const rosterGroups = filteredGroups.map(g=>{
+      const counselors = state.counselors.filter(c=>c.groupId===g.id && c.teamId===myTeamId).sort((a,b)=>a.name.localeCompare(b.name)).map(c=>Object.assign({kind:'counselor'},c));
+      const campers = state.campers.filter(c=>c.groupId===g.id && c.teamId===myTeamId).sort((a,b)=>a.name.localeCompare(b.name)).map(c=>Object.assign({kind:'camper'},c));
+      const people = counselors.concat(campers);
+      const rows = people.map(p=>{
+        const isAbsent = p.attendance && p.attendance[absentKey];
+        const status = personAssignmentColorStatus(period, myTeamId, p.id);
+        const statusClass = status==='over' ? 'status-over' : (status==='normal' ? 'status-normal' : '');
+        return `<div class="roster-person ${statusClass}" draggable="true" data-person="${p.id}" data-kind="${p.kind}" title="Drag to an activity to assign">
+          <span style="${isAbsent?'color:var(--red);font-weight:600;':''}">${escapeHtml(personDisplayName(p))}</span>
+          <span class="kind-tag">${p.kind==='counselor'?'Counselor':''}</span>
+        </div>`;
+      }).join('') || '<div class="empty-hint" style="margin:4px 0;">No one in this group yet.</div>';
+      return `<div class="roster-group">
+        <div class="roster-group-header" style="border-left-color:${DIVISION_COLORS[g.division]};">Group ${escapeHtml(String(g.number))} <span class="meta">${escapeHtml(g.division)}</span></div>
+        ${rows}
       </div>`;
-    }).join('') || '<div class="empty-hint">No campers or counselors from your team are in this period\u2019s divisions.</div>';
+    }).join('') || '<div class="empty-hint">No groups match this filter.</div>';
 
-    const activityCards = period.activities.map(a=>renderActivityCardCaptain(period, a, myTeamId, datalistId)).join('') || '<div class="empty-hint">No activities yet for this period.</div>';
+    const filteredActivities = divisionFilter ? period.activities.filter(a=>(a.divisions||[]).includes(divisionFilter)) : period.activities;
+    const activityCards = filteredActivities.map(a=>renderActivityCardCaptain(period, a, myTeamId, datalistId)).join('') || '<div class="empty-hint">No activities match this filter.</div>';
 
-    const datalistOptions = people.map(p=>`<option value="${escapeHtml(p.name)}">`).join('');
+    // datalist always draws from the full period roster, regardless of the view filter above
+    const allPeople = eligiblePeopleForPeriod(period, myTeamId);
+    const datalistOptions = allPeople.map(p=>`<option value="${escapeHtml(personDisplayName(p))}">`).join('');
 
     return `<div class="period-body">
-      <div class="subhead" style="margin-top:10px;">Your groups competing</div>
-      <div style="margin-bottom:14px;">${groupChips}</div>
+      <div class="row" style="align-items:flex-end;margin-top:10px;">
+        <div style="flex:1;">
+          <div class="subhead">Your groups competing</div>
+          <div>${groupChips}</div>
+        </div>
+        <div><label style="margin-bottom:4px;">Filter by division</label>${filterSelect}</div>
+      </div>
 
       <div class="roster-legend">
         <span><span class="sw-box" style="background:var(--assign-green);"></span> Assigned, within capacity</span>
@@ -1169,7 +1234,7 @@
       </div>
 
       <div class="assignment-layout">
-        <div class="roster-panel">${rosterRows}</div>
+        <div class="roster-panel">${rosterGroups}</div>
         <div class="activities-panel">
           <div class="activities-grid">${activityCards}</div>
         </div>
@@ -1180,22 +1245,31 @@
 
   function renderActivityCardCaptain(period, activity, teamId, datalistId){
     const list = getActivityAssignees(period.id, activity.id, teamId);
+    const counselorIds = list.filter(id=>{ const p=personById(id); return p && p.kind==='counselor'; });
+    const camperIds = list.filter(id=>{ const p=personById(id); return p && p.kind==='camper'; });
     const status = activityStatus(activity, list.length);
     const countLabel = `${list.length}/${activityCountLabel(activity)}`;
-    const assignedChips = list.map(id=>{
-      const person = personById(id);
-      if(!person) return '';
-      return `<span class="assign-chip">${escapeHtml(person.name)}<button data-action="unassignPerson" data-period="${period.id}" data-activity="${activity.id}" data-person="${id}" title="Remove">&times;</button></span>`;
-    }).join('') || '<span class="meta">No one assigned yet</span>';
+    const dots = (activity.divisions||[]).map(d=>`<span class="division-dot" style="background:${DIVISION_COLORS[d]}" title="${escapeHtml(d)}"></span>`).join('');
+
+    function chipsFor(ids){
+      return ids.map(id=>{
+        const person = personById(id);
+        if(!person) return '';
+        return `<span class="assign-chip">${escapeHtml(personDisplayName(person))}<button data-action="unassignPerson" data-period="${period.id}" data-activity="${activity.id}" data-person="${id}" title="Remove">&times;</button></span>`;
+      }).join('') || '<span class="meta">None yet</span>';
+    }
 
     return `<div class="activity-card" data-period="${period.id}" data-activity="${activity.id}">
       <div class="activity-card-header">
-        <strong>${escapeHtml(activity.title)}</strong>
+        <strong>${escapeHtml(activity.title)} ${dots}</strong>
         <span class="cap-badge ${status==='over'?'over':''}">${countLabel}</span>
       </div>
       ${activity.location?`<div class="meta">${escapeHtml(activity.location)}</div>`:''}
       ${activity.description?`<div class="meta">${escapeHtml(activity.description)}</div>`:''}
-      <div class="assign-chips">${assignedChips}</div>
+      <div class="activity-subsection-label">Counselors</div>
+      <div class="assign-chips">${chipsFor(counselorIds)}</div>
+      <div class="activity-subsection-label">Campers</div>
+      <div class="assign-chips">${chipsFor(camperIds)}</div>
       <input type="text" list="${datalistId}" placeholder="Type a name to assign..." data-role="activityAssignInput" data-period="${period.id}" data-activity="${activity.id}">
     </div>`;
   }
@@ -1375,9 +1449,14 @@
     renderAssignmentsPanel();
   });
 
-  // ---- assignment autocomplete input ----
+  // ---- assignment autocomplete input & per-period filter ----
   document.getElementById('periodsList').addEventListener('change', (e)=>{
     const t = e.target;
+    if(t.matches('[data-role="periodViewFilter"]')){
+      periodViewFilter.set(t.dataset.period, t.value);
+      renderAssignmentsPanel();
+      return;
+    }
     if(!t.matches('[data-role="activityAssignInput"]')) return;
     const period = state.periods.find(p=>p.id===t.dataset.period);
     const activity = period && period.activities.find(a=>a.id===t.dataset.activity);
@@ -1386,7 +1465,7 @@
     const eligible = eligiblePeopleForPeriod(period, myTeamId);
     const typed = t.value.trim().toLowerCase();
     if(!typed) return;
-    const match = eligible.find(p=>p.name.toLowerCase()===typed);
+    const match = eligible.find(p=>personDisplayName(p).toLowerCase()===typed);
     if(match){
       assignPersonToActivity(period, activity, myTeamId, match.id);
       renderAssignmentsPanel();
