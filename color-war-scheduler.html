@@ -183,6 +183,20 @@
   .slot-chip button{background:none;border:none;color:var(--ink-soft);cursor:pointer;font-size:12px;padding:0;margin-left:2px;}
   .slot-chip button:hover{color:var(--red);}
 
+  /* ---------- Assignments tab ---------- */
+  .checkbox-row{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:14px;font-size:13px;}
+  .checkbox-row label{display:flex;align-items:center;gap:5px;cursor:pointer;font-size:13px;color:var(--ink);}
+  .checkbox-row input{width:auto;margin:0;}
+  .period-card{padding:0;overflow:hidden;}
+  .period-toggle-btn{
+    width:100%;text-align:left;background:var(--paper-2);border:none;padding:16px 20px;cursor:pointer;
+    font-family:var(--font-display);font-size:24px;font-weight:600;color:var(--ink);
+    display:flex;justify-content:space-between;align-items:center;gap:10px;
+  }
+  .period-toggle-btn:hover{background:var(--paper);}
+  .period-toggle-btn .chevron{font-size:20px;color:var(--ink-soft);flex:0 0 auto;}
+  .period-body{padding:4px 20px 18px;border-top:1px solid var(--line);}
+
   .toolbar{display:flex;justify-content:flex-end;gap:8px;margin-bottom:14px;}
   .footer-note{text-align:center;font-size:11.5px;color:var(--ink-soft);margin-top:28px;}
   ::placeholder{color:#A9AFA6;}
@@ -317,13 +331,27 @@
     </div>
   </div>
 
-  <!-- ================= ASSIGNMENTS (stub) ================= -->
+  <!-- ================= ASSIGNMENTS ================= -->
   <div class="panel" id="assignmentsPanel">
-    <div class="card">
-      <h2>Assignments</h2>
-      <p class="sub">This tab isn't built out yet &mdash; it'll let a captain assign campers to whatever's happening in an assigning cell.</p>
-      <div id="assignmentsContext"></div>
+    <div class="card" id="periodAddSection">
+      <h2>Add a period</h2>
+      <p class="sub">Tag which divisions compete during this period &mdash; activities you add below can only be tagged with divisions selected here.</p>
+      <div class="row" style="align-items:flex-end;">
+        <div style="flex:1;"><label>Period label</label><input type="text" id="periodLabelInput" placeholder="e.g. Period 1"></div>
+        <div><button class="btn gold" id="addPeriodBtn">Add period</button></div>
+      </div>
+      <label>Competing divisions</label>
+      <div class="checkbox-row" id="periodDivisionCheckboxes">
+        <label><input type="checkbox" value="Pinecones"> Pinecones</label>
+        <label><input type="checkbox" value="Voyagers"> Voyagers</label>
+        <label><input type="checkbox" value="Juniors"> Juniors</label>
+        <label><input type="checkbox" value="Seniors"> Seniors</label>
+        <label><input type="checkbox" value="7th Grade"> 7th Grade</label>
+      </div>
     </div>
+
+    <div id="assignmentsContext"></div>
+    <div id="periodsList"></div>
   </div>
 
   <div class="footer-note">Data saves automatically and syncs in real time with anyone using the same access code.</div>
@@ -374,7 +402,8 @@
         {index:3,label:'Day 3',blocks:[]}
       ],
       scheduleCells:{},
-      assignmentProgress:{}
+      assignmentProgress:{},
+      periods:[]
     };
   }
   function normalizeState(data){
@@ -398,7 +427,16 @@
         return {index:i, label:'Day '+i, blocks:(existing&&existing.blocks)||[]};
       }),
       scheduleCells: data.scheduleCells||{},
-      assignmentProgress: data.assignmentProgress||{}
+      assignmentProgress: data.assignmentProgress||{},
+      periods: (data.periods||[]).map(p=>({
+        id:p.id, label:p.label||'', divisions:p.divisions||[],
+        activities:(p.activities||[]).map(a=>({
+          id:a.id, title:a.title||'', location:a.location||'', description:a.description||'',
+          camperCount: (typeof a.camperCount==='number') ? a.camperCount : (parseInt(a.camperCount,10)||0),
+          flexible: !!a.flexible,
+          divisions: a.divisions||[]
+        }))
+      }))
     };
   }
 
@@ -718,10 +756,31 @@
   // ============================================================
   function currentDay(){ return state.days.find(d=>d.index===currentScheduleDay); }
 
+  function addMinutesToTime(t, minsToAdd){
+    const parts = t.split(':');
+    const h = parseInt(parts[0],10), m = parseInt(parts[1],10);
+    let total = h*60+m+minsToAdd;
+    total = ((total % 1440)+1440)%1440;
+    const hh = Math.floor(total/60), mm = total%60;
+    return String(hh).padStart(2,'0')+':'+String(mm).padStart(2,'0');
+  }
+  function computeNextBlockStart(day){
+    if(!day.blocks || day.blocks.length===0) return '09:00';
+    let maxEnd = null;
+    day.blocks.forEach(b=>{
+      if(b.endTime && (!maxEnd || b.endTime > maxEnd)) maxEnd = b.endTime;
+    });
+    return maxEnd ? addMinutesToTime(maxEnd, 5) : '09:00';
+  }
+
   function renderBlockList(){
     document.getElementById('blockManagerCard').style.display = isAdmin() ? 'block' : 'none';
     if(!isAdmin()) return;
     const day = currentDay();
+    const startInput = document.getElementById('blockStartInput');
+    if(document.activeElement!==startInput){
+      startInput.value = computeNextBlockStart(day);
+    }
     const list = document.getElementById('blockList');
     const blocks = day.blocks.slice().sort((a,b)=>a.startTime.localeCompare(b.startTime));
     if(blocks.length===0){
@@ -850,25 +909,134 @@
     renderScheduleGrid();
   }
 
+  let expandedPeriods = new Set();
+
   function renderAssignmentsPanel(){
-    const el = document.getElementById('assignmentsContext');
-    if(!currentAssignmentContext){
-      el.innerHTML = '<div class="empty-hint">Click an assigning cell on the Schedule tab to land here.</div>';
-      return;
+    document.getElementById('periodAddSection').style.display = isAdmin() ? 'block' : 'none';
+    renderAssignmentsContextNote();
+    const el = document.getElementById('periodsList');
+    if(isAdmin()){
+      renderPeriodsAdmin(el);
+    } else {
+      renderPeriodsCaptain(el);
     }
+  }
+
+  function renderAssignmentsContextNote(){
+    const el = document.getElementById('assignmentsContext');
+    if(isAdmin() || !currentAssignmentContext){ el.innerHTML=''; return; }
     const ctx = currentAssignmentContext;
     const day = state.days.find(d=>d.index===ctx.dayIndex);
     const block = day ? day.blocks.find(b=>b.id===ctx.blockId) : null;
-    const team = teamById(ctx.teamId);
     const resolved = resolveCell(ctx.dayIndex, ctx.blockId, ctx.division, ctx.teamId);
-    el.innerHTML = `<div class="list-row">
-      <div>
-        <strong>${escapeHtml(resolved.title||'(untitled)')}</strong>
-        <div class="meta">Day ${ctx.dayIndex} &middot; ${block?escapeHtml(block.label||'Block'):'Unknown block'}
-        ${block?`(${formatTime(block.startTime)}&ndash;${formatTime(block.endTime)})`:''} &middot; ${escapeHtml(ctx.division)}
-        ${team?' &middot; '+escapeHtml(team.name):''}</div>
-      </div>
+    el.innerHTML = `<div class="empty-hint" style="text-align:left;margin-bottom:16px;">
+      Jumped here from <strong>${escapeHtml(resolved.title||'(untitled)')}</strong> &mdash; Day ${ctx.dayIndex}, ${block?escapeHtml(block.label||'Block'):'Unknown block'}, ${escapeHtml(ctx.division)}. Linking this to a specific period is coming later.
     </div>`;
+  }
+
+  function activityCountLabel(a){
+    return a.camperCount + (a.flexible?'*':'');
+  }
+
+  // ---------- admin: period + activity management ----------
+  function renderPeriodsAdmin(el){
+    if(state.periods.length===0){
+      el.innerHTML = '<div class="empty-hint">No periods yet. Add one above.</div>';
+      return;
+    }
+    el.innerHTML = state.periods.map(p=>renderPeriodCardAdmin(p)).join('');
+  }
+
+  function renderPeriodCardAdmin(period){
+    const divChips = period.divisions.map(d=>`<span class="chip" style="background:${DIVISION_COLORS[d]}"><span class="sw"></span>${escapeHtml(d)}</span>`).join(' ') || '<span class="meta">No divisions tagged</span>';
+    const activityRows = period.activities.map(a=>renderActivityRowAdmin(period,a)).join('') || '<div class="empty-hint">No activities yet.</div>';
+    const activityDivisionCheckboxes = period.divisions.length
+      ? period.divisions.map(d=>`<label style="margin-right:14px;"><input type="checkbox" data-role="newActivityDivision" data-period="${period.id}" value="${escapeHtml(d)}"> ${escapeHtml(d)}</label>`).join('')
+      : '<span class="meta">Tag divisions on the period above first.</span>';
+
+    return `<div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;">
+        <div><strong style="font-family:var(--font-display);font-size:24px;">${escapeHtml(period.label)}</strong> ${divChips}</div>
+        <button class="icon-btn" data-action="delPeriod" data-id="${period.id}">Remove period</button>
+      </div>
+
+      <div class="subhead" style="margin-top:16px;">Activities</div>
+      ${activityRows}
+
+      <div class="row" style="align-items:flex-end;margin-top:12px;">
+        <div style="flex:1;"><label>Title</label><input type="text" data-role="newActivityTitle" data-period="${period.id}" placeholder="e.g. Basketball"></div>
+        <div style="flex:1;"><label>Location</label><input type="text" data-role="newActivityLocation" data-period="${period.id}" placeholder="e.g. Gym"></div>
+      </div>
+      <label>Description</label>
+      <textarea data-role="newActivityDescription" data-period="${period.id}" placeholder="Optional details" style="min-height:56px;"></textarea>
+      <div class="row" style="align-items:flex-end;">
+        <div style="flex:0 0 170px;"><label># campers to assign</label><input type="number" min="1" data-role="newActivityCount" data-period="${period.id}" placeholder="e.g. 12"></div>
+        <div style="flex:1;"><label style="display:flex;align-items:center;gap:6px;margin-top:20px;"><input type="checkbox" data-role="newActivityFlexible" data-period="${period.id}" style="width:auto;margin:0;"> Can take more if needed (*)</label></div>
+      </div>
+      <label>Competing divisions for this activity</label>
+      <div class="checkbox-row">${activityDivisionCheckboxes}</div>
+      <button class="btn secondary" data-action="addActivity" data-period="${period.id}">Add activity</button>
+    </div>`;
+  }
+
+  function renderActivityRowAdmin(period, a){
+    const divChips = (a.divisions||[]).map(d=>`<span class="chip" style="background:${DIVISION_COLORS[d]}">${escapeHtml(d)}</span>`).join(' ');
+    return `<div class="list-row">
+      <div>
+        <strong>${escapeHtml(a.title)}</strong>
+        <span class="meta">${a.location?escapeHtml(a.location)+' &middot; ':''}${activityCountLabel(a)} camper${a.camperCount===1?'':'s'}</span>
+        ${a.description?`<div class="meta">${escapeHtml(a.description)}</div>`:''}
+        ${divChips?`<div style="margin-top:4px;">${divChips}</div>`:''}
+      </div>
+      <button class="icon-btn" data-action="delActivity" data-period="${period.id}" data-id="${a.id}">Remove</button>
+    </div>`;
+  }
+
+  // ---------- captains: period browser ----------
+  function renderPeriodsCaptain(el){
+    if(state.periods.length===0){
+      el.innerHTML = '<div class="empty-hint">No periods yet &mdash; check back once an admin sets them up.</div>';
+      return;
+    }
+    const myTeamId = currentTeamId();
+    el.innerHTML = state.periods.map(p=>{
+      const expanded = expandedPeriods.has(p.id);
+      const divChips = p.divisions.map(d=>`<span class="chip" style="background:${DIVISION_COLORS[d]}"><span class="sw"></span>${escapeHtml(d)}</span>`).join(' ');
+      let body = '';
+      if(expanded){
+        const activityRows = p.activities.map(a=>{
+          const divChips2 = (a.divisions||[]).map(d=>`<span class="chip" style="background:${DIVISION_COLORS[d]}">${escapeHtml(d)}</span>`).join(' ');
+          return `<div class="list-row">
+            <div>
+              <strong>${escapeHtml(a.title)}</strong>
+              <span class="meta">${a.location?escapeHtml(a.location)+' &middot; ':''}${activityCountLabel(a)} camper${a.camperCount===1?'':'s'}</span>
+              ${a.description?`<div class="meta">${escapeHtml(a.description)}</div>`:''}
+              ${divChips2?`<div style="margin-top:4px;">${divChips2}</div>`:''}
+            </div>
+          </div>`;
+        }).join('') || '<div class="empty-hint">No activities yet for this period.</div>';
+
+        const myGroups = state.groups
+          .filter(g=>g.teamId===myTeamId && p.divisions.includes(g.division))
+          .sort((a,b)=>DIVISION_ORDER.indexOf(a.division)-DIVISION_ORDER.indexOf(b.division) || Number(a.number)-Number(b.number));
+        const groupChips = myGroups.map(g=>`<span class="chip" style="background:${DIVISION_COLORS[g.division]}">Group ${escapeHtml(String(g.number))}</span>`).join(' ')
+          || '<span class="meta">None of your groups are in this period\u2019s divisions yet.</span>';
+
+        body = `<div class="period-body">
+          <div class="subhead" style="margin-top:10px;">Activities</div>
+          ${activityRows}
+          <div class="subhead" style="margin-top:16px;">Your groups competing</div>
+          <div>${groupChips}</div>
+        </div>`;
+      }
+      return `<div class="card period-card">
+        <button class="period-toggle-btn" data-action="togglePeriodExpand" data-id="${p.id}">
+          <span>${escapeHtml(p.label)} &nbsp; ${divChips}</span>
+          <span class="chevron">${expanded?'\u2212':'+'}</span>
+        </button>
+        ${body}
+      </div>`;
+    }).join('');
   }
 
   // ============================================================
@@ -879,6 +1047,7 @@
     renderStats();
     renderGroupsSection();
     renderScheduleTab();
+    renderAssignmentsPanel();
   }
 
   // ============================================================
@@ -996,8 +1165,20 @@
     if(!startInput.value || !endInput.value) return;
     const day = currentDay();
     day.blocks.push({id:uid('block'), label:labelInput.value.trim(), startTime:startInput.value, endTime:endInput.value, teamEndOverrides:{}});
-    labelInput.value=''; startInput.value='09:00'; endInput.value='';
+    labelInput.value=''; startInput.value=computeNextBlockStart(day); endInput.value='';
     queueSave(); renderAll();
+  });
+
+  // ---- periods ----
+  document.getElementById('addPeriodBtn').addEventListener('click', ()=>{
+    if(!isAdmin()) return;
+    const labelInput = document.getElementById('periodLabelInput');
+    const label = labelInput.value.trim() || ('Period '+(state.periods.length+1));
+    const checked = Array.from(document.querySelectorAll('#periodDivisionCheckboxes input:checked')).map(cb=>cb.value);
+    state.periods.push({id:uid('period'), label, divisions:checked, activities:[]});
+    labelInput.value='';
+    document.querySelectorAll('#periodDivisionCheckboxes input').forEach(cb=>cb.checked=false);
+    queueSave(); renderAssignmentsPanel();
   });
 
   // ---- reset ----
@@ -1181,6 +1362,47 @@
         teamId: currentTeamId()
       };
       activateTab('assignments');
+    } else if(action==='delPeriod'){
+      if(!isAdmin()) return;
+      const id = target.dataset.id;
+      if(confirm('Remove this period and all its activities?')){
+        state.periods = state.periods.filter(p=>p.id!==id);
+        expandedPeriods.delete(id);
+        queueSave(); renderAssignmentsPanel();
+      }
+    } else if(action==='addActivity'){
+      if(!isAdmin()) return;
+      const periodId = target.dataset.period;
+      const period = state.periods.find(p=>p.id===periodId);
+      if(!period) return;
+      const titleInput = document.querySelector(`input[data-role="newActivityTitle"][data-period="${periodId}"]`);
+      const locationInput = document.querySelector(`input[data-role="newActivityLocation"][data-period="${periodId}"]`);
+      const descInput = document.querySelector(`textarea[data-role="newActivityDescription"][data-period="${periodId}"]`);
+      const countInput = document.querySelector(`input[data-role="newActivityCount"][data-period="${periodId}"]`);
+      const flexInput = document.querySelector(`input[data-role="newActivityFlexible"][data-period="${periodId}"]`);
+      const divChecks = Array.from(document.querySelectorAll(`input[data-role="newActivityDivision"][data-period="${periodId}"]:checked`)).map(cb=>cb.value);
+      const title = titleInput.value.trim();
+      const count = parseInt(countInput.value,10);
+      if(!title || !count || count<1) return;
+      period.activities.push({
+        id:uid('activity'), title, location:locationInput.value.trim(), description:descInput.value.trim(),
+        camperCount:count, flexible:flexInput.checked, divisions:divChecks
+      });
+      titleInput.value=''; locationInput.value=''; descInput.value=''; countInput.value=''; flexInput.checked=false;
+      queueSave(); renderAssignmentsPanel();
+    } else if(action==='delActivity'){
+      if(!isAdmin()) return;
+      const periodId = target.dataset.period, id = target.dataset.id;
+      const period = state.periods.find(p=>p.id===periodId);
+      if(!period) return;
+      if(confirm('Remove this activity?')){
+        period.activities = period.activities.filter(a=>a.id!==id);
+        queueSave(); renderAssignmentsPanel();
+      }
+    } else if(action==='togglePeriodExpand'){
+      const id = target.dataset.id;
+      if(expandedPeriods.has(id)) expandedPeriods.delete(id); else expandedPeriods.add(id);
+      renderAssignmentsPanel();
     }
   });
 
