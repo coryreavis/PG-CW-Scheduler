@@ -740,6 +740,10 @@
           <div><strong>${escapeHtml(b.label||'Block')}</strong> <span class="meta">${formatTime(b.startTime)} &ndash; ${formatTime(b.endTime)}</span></div>
           <button class="icon-btn" data-action="delBlock" data-day="${day.index}" data-block="${b.id}">Remove block</button>
         </div>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-soft);margin-top:6px;cursor:pointer;">
+          <input type="checkbox" data-action="toggleSharedDivisions" data-day="${day.index}" data-block="${b.id}" ${b.sharedAcrossDivisions?'checked':''} style="width:auto;margin:0;">
+          Same title for every division this block
+        </label>
         ${overrideChips?`<div style="margin-top:4px;">${overrideChips}</div>`:''}
         <div class="row" style="align-items:flex-end;margin-top:8px;">
           <div style="flex:1;"><select data-role="overrideTeamSelect" data-block="${b.id}" style="margin-bottom:0;">${state.teams.map(t=>`<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('')}</select></div>
@@ -768,21 +772,23 @@
   }
 
   function renderScheduleGridAdmin(day, blocks, el, sub){
-    sub.innerHTML = 'Set a title for each cell and mark it <strong>assigning</strong> or <strong>non-assigning</strong>. Check "Per-team" to give each team its own title for that cell.';
+    sub.innerHTML = 'Set a title for each cell and mark it <strong>assigning</strong> or <strong>non-assigning</strong>. Check "Per-team" to give each team its own title for that cell, or check "Same title for every division" on a block to share one title across the whole row.';
     let anyOverrides = false;
     const header = '<tr><th>Block</th>'+DIVISION_ORDER.map(d=>`<th>${escapeHtml(d)}</th>`).join('')+'</tr>';
     const rows = blocks.map(b=>{
       const hasOverride = b.teamEndOverrides && Object.keys(b.teamEndOverrides).length>0;
       if(hasOverride) anyOverrides = true;
       const timeLabel = `${formatTime(b.startTime)}&ndash;${formatTime(b.endTime)}${hasOverride?' *':''}`;
-      const cells = DIVISION_ORDER.map(div=>renderAdminCell(day, b, div)).join('');
+      const cells = b.sharedAcrossDivisions
+        ? renderAdminCell(day, b, 'ALL', DIVISION_ORDER.length)
+        : DIVISION_ORDER.map(div=>renderAdminCell(day, b, div)).join('');
       return `<tr><td class="block-label-cell"><strong>${escapeHtml(b.label||'Block')}</strong><br><span class="meta">${timeLabel}</span></td>${cells}</tr>`;
     }).join('');
     el.innerHTML = `<table class="csv-grid"><thead>${header}</thead><tbody>${rows}</tbody></table>`
       + (anyOverrides ? '<p class="sub" style="margin-top:8px;">* ends at a different time for one or more teams &mdash; see the block list above for details.</p>' : '');
   }
 
-  function renderAdminCell(day, block, division){
+  function renderAdminCell(day, block, division, colspan){
     const key = cellKey(day.index, block.id, division);
     const cell = getCell(key) || {perTeam:false, title:'', type:'non-assigning', teamCells:{}};
     let inner;
@@ -805,7 +811,7 @@
           <option value="assigning" ${cell.type==='assigning'?'selected':''}>Assigning</option>
         </select>`;
     }
-    return `<td><div class="admin-cell">
+    return `<td${colspan?` colspan="${colspan}"`:''}><div class="admin-cell">
       <label class="perteam-toggle"><input type="checkbox" data-action="togglePerTeam" data-key="${key}" ${cell.perTeam?'checked':''}> Per-team</label>
       ${inner}
     </div></td>`;
@@ -817,21 +823,26 @@
     const header = '<tr><th>Block</th>'+DIVISION_ORDER.map(d=>`<th>${escapeHtml(d)}</th>`).join('')+'</tr>';
     const rows = blocks.map(b=>{
       const timeLabel = `${formatTime(b.startTime)}&ndash;${formatTime(b.endTime)}`;
-      const cells = DIVISION_ORDER.map(div=>{
-        const resolved = resolveCell(day.index, b.id, div, myTeamId);
-        if(!resolved.title && resolved.type==='non-assigning'){
-          return `<td><div class="sched-cell empty-cell">&mdash;</div></td>`;
-        }
-        if(resolved.type==='assigning'){
-          const progKey = cellKey(day.index, b.id, div)+'_'+myTeamId;
-          const pct = state.assignmentProgress[progKey]||0;
-          return `<td><div class="sched-cell assigning" style="background:${progressColor(pct)}" data-action="goAssignments" data-day="${day.index}" data-block="${b.id}" data-division="${escapeHtml(div)}" title="Click to open Assignments">${escapeHtml(resolved.title)||'&nbsp;'}</div></td>`;
-        }
-        return `<td><div class="sched-cell non-assigning">${escapeHtml(resolved.title)||'&nbsp;'}</div></td>`;
-      }).join('');
+      const cells = b.sharedAcrossDivisions
+        ? renderCaptainCell(day, b, 'ALL', myTeamId, DIVISION_ORDER.length)
+        : DIVISION_ORDER.map(div=>renderCaptainCell(day, b, div, myTeamId)).join('');
       return `<tr><td class="block-label-cell"><strong>${escapeHtml(b.label||'Block')}</strong><br><span class="meta">${timeLabel}</span></td>${cells}</tr>`;
     }).join('');
     el.innerHTML = `<table class="csv-grid"><thead>${header}</thead><tbody>${rows}</tbody></table>`;
+  }
+
+  function renderCaptainCell(day, block, division, teamId, colspan){
+    const resolved = resolveCell(day.index, block.id, division, teamId);
+    const colspanAttr = colspan ? ` colspan="${colspan}"` : '';
+    if(!resolved.title && resolved.type==='non-assigning'){
+      return `<td${colspanAttr}><div class="sched-cell empty-cell">&mdash;</div></td>`;
+    }
+    if(resolved.type==='assigning'){
+      const progKey = cellKey(day.index, block.id, division)+'_'+teamId;
+      const pct = state.assignmentProgress[progKey]||0;
+      return `<td${colspanAttr}><div class="sched-cell assigning" style="background:${progressColor(pct)}" data-action="goAssignments" data-day="${day.index}" data-block="${block.id}" data-division="${escapeHtml(division)}" title="Click to open Assignments">${escapeHtml(resolved.title)||'&nbsp;'}</div></td>`;
+    }
+    return `<td${colspanAttr}><div class="sched-cell non-assigning">${escapeHtml(resolved.title)||'&nbsp;'}</div></td>`;
   }
 
   function renderScheduleTab(){
@@ -1153,6 +1164,14 @@
         cell.teamCells = cell.teamCells||{};
         state.teams.forEach(t=>{ if(!cell.teamCells[t.id]) cell.teamCells[t.id] = {title:'',type:'non-assigning'}; });
       }
+      queueSave(); renderScheduleGrid();
+    } else if(action==='toggleSharedDivisions'){
+      if(!isAdmin()) return;
+      const dayIndex = parseInt(target.dataset.day,10), blockId = target.dataset.block;
+      const day = state.days.find(d=>d.index===dayIndex);
+      const block = day.blocks.find(b=>b.id===blockId);
+      if(!block) return;
+      block.sharedAcrossDivisions = target.checked;
       queueSave(); renderScheduleGrid();
     } else if(action==='goAssignments'){
       currentAssignmentContext = {
