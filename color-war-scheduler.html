@@ -663,8 +663,14 @@
   function getActivityAssignees(periodId, activityId, teamId){
     return state.periodAssignments[periodAssignKey(periodId, activityId, teamId)] || [];
   }
-  function activityStatus(activity, count){
-    return count > activity.camperCount ? 'over' : 'normal';
+  function getActivityCamperCount(periodId, activityId, teamId){
+    return getActivityAssignees(periodId, activityId, teamId).filter(id=>{
+      const p = personById(id);
+      return p && p.kind==='camper';
+    }).length;
+  }
+  function activityStatus(activity, camperCount){
+    return camperCount > activity.camperCount ? 'over' : 'normal';
   }
   function eligiblePeopleForPeriod(period, teamId){
     const groupIds = new Set(state.groups.filter(g=>g.teamId===teamId && period.divisions.includes(g.division)).map(g=>g.id));
@@ -681,8 +687,12 @@
     }
     const list = getActivityAssignees(period.id, activity.id, teamId);
     if(list.includes(personId)) return {ok:true};
-    if(list.length >= activity.camperCount && !activity.flexible){
-      return {ok:false, reason:'full'};
+    // Only campers count against the activity's capacity — counselors never fill a slot.
+    if(person.kind==='camper'){
+      const camperCount = getActivityCamperCount(period.id, activity.id, teamId);
+      if(camperCount >= activity.camperCount && !activity.flexible){
+        return {ok:false, reason:'full'};
+      }
     }
     return {ok:true};
   }
@@ -716,12 +726,120 @@
     if(state.periodAssignments[key]) state.periodAssignments[key] = state.periodAssignments[key].filter(id=>id!==personId);
     queueSave();
   }
+
+  function runAutofill(period, teamId, filteredActivities, filteredGroups){
+    if(filteredActivities.length===0) return;
+    const groupIds = new Set(filteredGroups.map(g=>g.id));
+    const absentKey = 'day'+period.day;
+    const isAssignedAnywhere = (personId) => period.activities.some(a=>getActivityAssignees(period.id, a.id, teamId).includes(personId));
+
+    function personDivision(person){
+      const g = groupById(person.groupId);
+      return g ? g.division : null;
+    }
+    function eligibleFor(pool, activity){
+      return pool.filter(p=>(activity.divisions||[]).includes(personDivision(p)));
+    }
+    function pickRandom(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+    function removeFromPool(pool, personId){
+      const idx = pool.findIndex(p=>p.id===personId);
+      if(idx>-1) pool.splice(idx,1);
+    }
+    function isAbsent(person){ return !!(person.attendance && person.attendance[absentKey]); }
+
+    let camperPool = state.campers
+      .filter(c=>c.teamId===teamId && groupIds.has(c.groupId) && !isAbsent(c) && !isAssignedAnywhere(c.id))
+      .map(c=>Object.assign({kind:'camper'},c));
+    let counselorPool = state.counselors
+      .filter(c=>c.teamId===teamId && groupIds.has(c.groupId) && !isAbsent(c) && !isAssignedAnywhere(c.id))
+      .map(c=>Object.assign({kind:'counselor'},c));
+
+    // Phase 1: fill every activity up to its stated capacity before any overflow.
+    let progressed = true;
+    while(progressed){
+      progressed = false;
+      const needy = filteredActivities.filter(act=>{
+        const count = getActivityCamperCount(period.id, act.id, teamId);
+        return count < act.camperCount && eligibleFor(camperPool, act).length>0;
+      });
+      if(needy.length===0) break;
+      const act = pickRandom(needy);
+      const eligible = eligibleFor(camperPool, act);
+      const camper = pickRandom(eligible);
+      if(assignPersonToActivity(period, act, teamId, camper.id)){
+        removeFromPool(camperPool, camper.id);
+        progressed = true;
+      } else {
+        removeFromPool(camperPool, camper.id); // shouldn't normally fail here, but avoid infinite loop
+        progressed = true;
+      }
+    }
+
+    // Phase 2: only once every activity is as full as it can be, spill remaining
+    // unassigned campers into activities marked with * (flexible), still respecting division.
+    const flexActs = filteredActivities.filter(a=>a.flexible);
+    progressed = flexActs.length>0;
+    while(progressed){
+      progressed = false;
+      const needy = flexActs.filter(act=>eligibleFor(camperPool, act).length>0);
+      if(needy.length===0) break;
+      const act = pickRandom(needy);
+      const eligible = eligibleFor(camperPool, act);
+      const camper = pickRandom(eligible);
+      if(assignPersonToActivity(period, act, teamId, camper.id)){
+        removeFromPool(camperPool, camper.id);
+        progressed = true;
+      } else {
+        removeFromPool(camperPool, camper.id);
+        progressed = true;
+      }
+    }
+
+    // Step 3: every activity gets at least one counselor first, if one is available.
+    filteredActivities.forEach(act=>{
+      const hasCounselor = getActivityAssignees(period.id, act.id, teamId).some(id=>{
+        const p = personById(id); return p && p.kind==='counselor';
+      });
+      if(!hasCounselor){
+        const eligible = eligibleFor(counselorPool, act);
+        if(eligible.length>0){
+          const chosen = pickRandom(eligible);
+          if(assignPersonToActivity(period, act, teamId, chosen.id)){
+            removeFromPool(counselorPool, chosen.id);
+          }
+        }
+      }
+    });
+
+    // Step 4: any leftover counselors go to the activities with the most participants first,
+    // cycling back through the busiest-to-least-busy order if there are more counselors than activities.
+    if(counselorPool.length>0){
+      const sorted = filteredActivities.slice().sort((a,b)=>getActivityCamperCount(period.id,b.id,teamId)-getActivityCamperCount(period.id,a.id,teamId));
+      let madeProgress = true;
+      while(counselorPool.length>0 && madeProgress){
+        madeProgress = false;
+        for(const act of sorted){
+          if(counselorPool.length===0) break;
+          const eligible = eligibleFor(counselorPool, act);
+          if(eligible.length>0){
+            const chosen = pickRandom(eligible);
+            if(assignPersonToActivity(period, act, teamId, chosen.id)){
+              removeFromPool(counselorPool, chosen.id);
+              madeProgress = true;
+            }
+          }
+        }
+      }
+    }
+  }
+
   function personAssignmentColorStatus(period, teamId, personId){
     let sawOver=false, sawNormal=false;
     period.activities.forEach(a=>{
       const list = getActivityAssignees(period.id, a.id, teamId);
       if(list.includes(personId)){
-        if(activityStatus(a, list.length)==='over') sawOver=true; else sawNormal=true;
+        const camperCount = getActivityCamperCount(period.id, a.id, teamId);
+        if(activityStatus(a, camperCount)==='over') sawOver=true; else sawNormal=true;
       }
     });
     if(sawOver) return 'over';
@@ -1177,15 +1295,23 @@
     return groups.sort((a,b)=>DIVISION_ORDER.indexOf(a.division)-DIVISION_ORDER.indexOf(b.division) || Number(a.number)-Number(b.number));
   }
 
-  function renderPeriodAssignmentBody(period, myTeamId){
+  function getPeriodFilterScope(period, teamId){
     const divisionFilter = periodViewFilter.get(period.id) || '';
+    const filteredGroups = eligibleGroupsForPeriod(period, teamId, divisionFilter);
+    const filteredActivities = divisionFilter ? period.activities.filter(a=>(a.divisions||[]).includes(divisionFilter)) : period.activities.slice();
+    return {divisionFilter, filteredGroups, filteredActivities};
+  }
+
+  function renderPeriodAssignmentBody(period, myTeamId){
+    const scope = getPeriodFilterScope(period, myTeamId);
+    const divisionFilter = scope.divisionFilter;
     const filterOptions = period.divisions.map(d=>`<option value="${escapeHtml(d)}" ${divisionFilter===d?'selected':''}>${escapeHtml(d)}</option>`).join('');
     const filterSelect = `<select data-role="periodViewFilter" data-period="${period.id}" style="margin-bottom:0;max-width:210px;">
       <option value="" ${divisionFilter===''?'selected':''}>All divisions</option>
       ${filterOptions}
     </select>`;
 
-    const filteredGroups = eligibleGroupsForPeriod(period, myTeamId, divisionFilter);
+    const filteredGroups = scope.filteredGroups;
     const groupChips = filteredGroups.map(g=>`<span class="chip" style="background:${DIVISION_COLORS[g.division]}">Group ${escapeHtml(String(g.number))}</span>`).join(' ')
       || '<span class="meta">No groups match this filter.</span>';
 
@@ -1211,7 +1337,7 @@
       </div>`;
     }).join('') || '<div class="empty-hint">No groups match this filter.</div>';
 
-    const filteredActivities = divisionFilter ? period.activities.filter(a=>(a.divisions||[]).includes(divisionFilter)) : period.activities;
+    const filteredActivities = scope.filteredActivities;
     const activityCards = filteredActivities.map(a=>renderActivityCardCaptain(period, a, myTeamId, datalistId)).join('') || '<div class="empty-hint">No activities match this filter.</div>';
 
     // datalist always draws from the full period roster, regardless of the view filter above
@@ -1225,6 +1351,7 @@
           <div>${groupChips}</div>
         </div>
         <div><label style="margin-bottom:4px;">Filter by division</label>${filterSelect}</div>
+        <div><button class="btn gold" data-action="autofillPeriod" data-period="${period.id}" title="Fills currently-filtered activities with unassigned campers/counselors from currently-filtered groups">Autofill</button></div>
       </div>
 
       <div class="roster-legend">
@@ -1247,8 +1374,8 @@
     const list = getActivityAssignees(period.id, activity.id, teamId);
     const counselorIds = list.filter(id=>{ const p=personById(id); return p && p.kind==='counselor'; });
     const camperIds = list.filter(id=>{ const p=personById(id); return p && p.kind==='camper'; });
-    const status = activityStatus(activity, list.length);
-    const countLabel = `${list.length}/${activityCountLabel(activity)}`;
+    const status = activityStatus(activity, camperIds.length);
+    const countLabel = `${camperIds.length}/${activityCountLabel(activity)}`;
     const dots = (activity.divisions||[]).map(d=>`<span class="division-dot" style="background:${DIVISION_COLORS[d]}" title="${escapeHtml(d)}"></span>`).join('');
 
     function chipsFor(ids){
@@ -1699,6 +1826,17 @@
       const activity = period && period.activities.find(a=>a.id===target.dataset.activity);
       if(!period || !activity) return;
       unassignPersonFromActivity(period, activity, currentTeamId(), target.dataset.person);
+      renderAssignmentsPanel();
+    } else if(action==='autofillPeriod'){
+      const period = state.periods.find(p=>p.id===target.dataset.period);
+      if(!period) return;
+      const myTeamId = currentTeamId();
+      const scope = getPeriodFilterScope(period, myTeamId);
+      if(scope.filteredActivities.length===0){
+        alert('No activities match the current filter for this period.');
+        return;
+      }
+      runAutofill(period, myTeamId, scope.filteredActivities, scope.filteredGroups);
       renderAssignmentsPanel();
     }
   });
