@@ -157,6 +157,28 @@
   table.grid-table th{text-align:center;}
   table.grid-table td:first-child{white-space:nowrap;}
   table.grid-table td input[type=text]{margin-bottom:0;font-size:13px;padding:6px 8px;}
+
+  table.csv-grid{border-collapse:collapse;width:100%;font-size:13px;table-layout:fixed;}
+  table.csv-grid th, table.csv-grid td{border:1px solid var(--line);padding:0;vertical-align:top;}
+  table.csv-grid th{background:var(--paper);font-family:var(--font-display);font-size:16px;font-weight:600;letter-spacing:0.3px;text-align:center;padding:8px 6px;}
+  table.csv-grid td.block-label-cell{padding:8px 10px;white-space:nowrap;background:var(--paper);width:1%;}
+
+  .sched-cell{min-height:44px;padding:9px 10px;font-size:13px;display:flex;align-items:center;}
+  .sched-cell.non-assigning{background:#EBECE7;color:var(--ink-soft);cursor:default;}
+  .sched-cell.assigning{cursor:pointer;font-weight:600;transition:filter .12s;}
+  .sched-cell.assigning:hover{filter:brightness(0.96);}
+  .sched-cell.empty-cell{background:transparent;color:#B7BBB3;font-style:italic;cursor:default;}
+
+  .admin-cell{padding:8px;min-width:180px;}
+  .admin-cell .perteam-toggle{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--ink-soft);margin-bottom:6px;cursor:pointer;}
+  .admin-cell .perteam-toggle input{width:auto;margin:0;}
+  .admin-cell input[type=text]{margin-bottom:6px;font-size:12.5px;padding:6px 8px;}
+  .admin-cell select{margin-bottom:0;font-size:12.5px;padding:6px 8px;}
+  .admin-team-row{display:flex;gap:4px;align-items:center;margin-bottom:6px;}
+  .admin-team-row .chip{flex:0 0 auto;font-size:10.5px;padding:2px 7px 2px 6px;}
+  .admin-team-row input[type=text]{flex:1;margin-bottom:0;}
+  .admin-team-row select{flex:0 0 108px;margin-bottom:0;font-size:11.5px;padding:5px 4px;}
+
   .slot-chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;background:var(--paper);border:1px solid var(--line);padding:3px 8px;border-radius:6px;margin:2px 4px 2px 0;}
   .slot-chip button{background:none;border:none;color:var(--ink-soft);cursor:pointer;font-size:12px;padding:0;margin-left:2px;}
   .slot-chip button:hover{color:var(--red);}
@@ -213,6 +235,7 @@
   <div class="tabs">
     <button class="tab-btn active" data-tab="schedule">Schedule</button>
     <button class="tab-btn" data-tab="groups">Groups</button>
+    <button class="tab-btn" data-tab="assignments">Assignments</button>
   </div>
 
   <!-- ================= SCHEDULE ================= -->
@@ -235,9 +258,9 @@
       <div id="blockList"></div>
     </div>
 
-    <div class="card">
+    <div class="card" id="scheduleGridCard">
       <h2>Schedule grid</h2>
-      <p class="sub">Rows are blocks, columns are divisions. Click a cell to note what's happening &mdash; more detailed logic is coming later.</p>
+      <p class="sub" id="scheduleGridSub">Rows are blocks, columns are divisions.</p>
       <div id="scheduleGrid"></div>
     </div>
   </div>
@@ -294,6 +317,15 @@
     </div>
   </div>
 
+  <!-- ================= ASSIGNMENTS (stub) ================= -->
+  <div class="panel" id="assignmentsPanel">
+    <div class="card">
+      <h2>Assignments</h2>
+      <p class="sub">This tab isn't built out yet &mdash; it'll let a captain assign campers to whatever's happening in an assigning cell.</p>
+      <div id="assignmentsContext"></div>
+    </div>
+  </div>
+
   <div class="footer-note">Data saves automatically and syncs in real time with anyone using the same access code.</div>
 </div>
 
@@ -341,7 +373,8 @@
         {index:2,label:'Day 2',blocks:[]},
         {index:3,label:'Day 3',blocks:[]}
       ],
-      scheduleAssignments:{}
+      scheduleCells:{},
+      assignmentProgress:{}
     };
   }
   function normalizeState(data){
@@ -364,7 +397,8 @@
         const existing = (data.days||[]).find(d=>d.index===i);
         return {index:i, label:'Day '+i, blocks:(existing&&existing.blocks)||[]};
       }),
-      scheduleAssignments: data.scheduleAssignments||{}
+      scheduleCells: data.scheduleCells||{},
+      assignmentProgress: data.assignmentProgress||{}
     };
   }
 
@@ -373,6 +407,7 @@
   let applyingRemote=false;
   let currentRole = null; // {type:'admin'} or {type:'team', teamId:'...'}
   let currentScheduleDay = 1;
+  let currentAssignmentContext = null; // {dayIndex, blockId, division, teamId}
 
   function uid(prefix){ return prefix+'_'+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
   function escapeHtml(s){
@@ -489,6 +524,30 @@
   function teamById(id){ return state.teams.find(t=>t.id===id); }
   function groupById(id){ return state.groups.find(g=>g.id===id); }
   function camperById(id){ return state.campers.find(c=>c.id===id); }
+
+  // ---------- schedule cell config ----------
+  function cellKey(dayIndex, blockId, division){ return dayIndex+'_'+blockId+'_'+division; }
+  function getCell(key){ return state.scheduleCells[key]; }
+  function getOrCreateCell(key){
+    if(!state.scheduleCells[key]){
+      state.scheduleCells[key] = {perTeam:false, title:'', type:'non-assigning', teamCells:{}};
+    }
+    return state.scheduleCells[key];
+  }
+  function resolveCell(dayIndex, blockId, division, teamId){
+    const cell = getCell(cellKey(dayIndex, blockId, division));
+    if(!cell) return {title:'', type:'non-assigning'};
+    if(cell.perTeam){
+      const tc = (cell.teamCells||{})[teamId];
+      return tc ? {title:tc.title||'', type:tc.type||'non-assigning'} : {title:'', type:'non-assigning'};
+    }
+    return {title:cell.title||'', type:cell.type||'non-assigning'};
+  }
+  function progressColor(pct){
+    if(pct>=100) return 'var(--green-tint)';
+    if(pct>0) return 'var(--gold-tint)';
+    return 'var(--red-tint)';
+  }
 
   // ---------- stats ----------
   function renderStats(){
@@ -694,31 +753,111 @@
   function renderScheduleGrid(){
     const day = currentDay();
     const el = document.getElementById('scheduleGrid');
+    const sub = document.getElementById('scheduleGridSub');
     const blocks = day.blocks.slice().sort((a,b)=>a.startTime.localeCompare(b.startTime));
     if(blocks.length===0){
+      sub.textContent = isAdmin() ? 'Rows are blocks, columns are divisions.' : '';
       el.innerHTML = '<div class="empty-hint">'+(isAdmin() ? 'No blocks yet for this day. Add one above.' : 'No blocks yet for this day &mdash; check back once an admin sets up the day.')+'</div>';
       return;
     }
-    const header = '<tr><th>Block</th>'+DIVISION_ORDER.map(d=>`<th>${escapeHtml(d)}</th>`).join('')+'</tr>';
+    if(isAdmin()){
+      renderScheduleGridAdmin(day, blocks, el, sub);
+    } else {
+      renderScheduleGridCaptain(day, blocks, el, sub);
+    }
+  }
+
+  function renderScheduleGridAdmin(day, blocks, el, sub){
+    sub.innerHTML = 'Set a title for each cell and mark it <strong>assigning</strong> or <strong>non-assigning</strong>. Check "Per-team" to give each team its own title for that cell.';
     let anyOverrides = false;
+    const header = '<tr><th>Block</th>'+DIVISION_ORDER.map(d=>`<th>${escapeHtml(d)}</th>`).join('')+'</tr>';
     const rows = blocks.map(b=>{
       const hasOverride = b.teamEndOverrides && Object.keys(b.teamEndOverrides).length>0;
       if(hasOverride) anyOverrides = true;
       const timeLabel = `${formatTime(b.startTime)}&ndash;${formatTime(b.endTime)}${hasOverride?' *':''}`;
-      const cells = DIVISION_ORDER.map(div=>{
-        const key = day.index+'_'+b.id+'_'+div;
-        const val = state.scheduleAssignments[key]||'';
-        return `<td><input type="text" data-role="gridCell" data-key="${key}" value="${escapeHtml(val)}" placeholder="&mdash;"></td>`;
-      }).join('');
-      return `<tr><td><strong>${escapeHtml(b.label||'Block')}</strong><br><span class="meta">${timeLabel}</span></td>${cells}</tr>`;
+      const cells = DIVISION_ORDER.map(div=>renderAdminCell(day, b, div)).join('');
+      return `<tr><td class="block-label-cell"><strong>${escapeHtml(b.label||'Block')}</strong><br><span class="meta">${timeLabel}</span></td>${cells}</tr>`;
     }).join('');
-    el.innerHTML = `<table class="sched grid-table"><thead>${header}</thead><tbody>${rows}</tbody></table>`
+    el.innerHTML = `<table class="csv-grid"><thead>${header}</thead><tbody>${rows}</tbody></table>`
       + (anyOverrides ? '<p class="sub" style="margin-top:8px;">* ends at a different time for one or more teams &mdash; see the block list above for details.</p>' : '');
+  }
+
+  function renderAdminCell(day, block, division){
+    const key = cellKey(day.index, block.id, division);
+    const cell = getCell(key) || {perTeam:false, title:'', type:'non-assigning', teamCells:{}};
+    let inner;
+    if(cell.perTeam){
+      inner = state.teams.map(t=>{
+        const tc = (cell.teamCells||{})[t.id] || {title:'',type:'non-assigning'};
+        return `<div class="admin-team-row">
+          <span class="chip" style="background:${t.color}">${escapeHtml(t.name)}</span>
+          <input type="text" value="${escapeHtml(tc.title)}" placeholder="Title" data-role="teamCellTitle" data-key="${key}" data-team="${t.id}">
+          <select data-role="teamCellType" data-key="${key}" data-team="${t.id}">
+            <option value="non-assigning" ${tc.type==='non-assigning'?'selected':''}>Non-assigning</option>
+            <option value="assigning" ${tc.type==='assigning'?'selected':''}>Assigning</option>
+          </select>
+        </div>`;
+      }).join('') || '<div class="meta">Add a team first.</div>';
+    } else {
+      inner = `<input type="text" value="${escapeHtml(cell.title)}" placeholder="Title" data-role="cellTitle" data-key="${key}">
+        <select data-role="cellType" data-key="${key}">
+          <option value="non-assigning" ${cell.type==='non-assigning'?'selected':''}>Non-assigning</option>
+          <option value="assigning" ${cell.type==='assigning'?'selected':''}>Assigning</option>
+        </select>`;
+    }
+    return `<td><div class="admin-cell">
+      <label class="perteam-toggle"><input type="checkbox" data-action="togglePerTeam" data-key="${key}" ${cell.perTeam?'checked':''}> Per-team</label>
+      ${inner}
+    </div></td>`;
+  }
+
+  function renderScheduleGridCaptain(day, blocks, el, sub){
+    sub.textContent = '';
+    const myTeamId = currentTeamId();
+    const header = '<tr><th>Block</th>'+DIVISION_ORDER.map(d=>`<th>${escapeHtml(d)}</th>`).join('')+'</tr>';
+    const rows = blocks.map(b=>{
+      const timeLabel = `${formatTime(b.startTime)}&ndash;${formatTime(b.endTime)}`;
+      const cells = DIVISION_ORDER.map(div=>{
+        const resolved = resolveCell(day.index, b.id, div, myTeamId);
+        if(!resolved.title && resolved.type==='non-assigning'){
+          return `<td><div class="sched-cell empty-cell">&mdash;</div></td>`;
+        }
+        if(resolved.type==='assigning'){
+          const progKey = cellKey(day.index, b.id, div)+'_'+myTeamId;
+          const pct = state.assignmentProgress[progKey]||0;
+          return `<td><div class="sched-cell assigning" style="background:${progressColor(pct)}" data-action="goAssignments" data-day="${day.index}" data-block="${b.id}" data-division="${escapeHtml(div)}" title="Click to open Assignments">${escapeHtml(resolved.title)||'&nbsp;'}</div></td>`;
+        }
+        return `<td><div class="sched-cell non-assigning">${escapeHtml(resolved.title)||'&nbsp;'}</div></td>`;
+      }).join('');
+      return `<tr><td class="block-label-cell"><strong>${escapeHtml(b.label||'Block')}</strong><br><span class="meta">${timeLabel}</span></td>${cells}</tr>`;
+    }).join('');
+    el.innerHTML = `<table class="csv-grid"><thead>${header}</thead><tbody>${rows}</tbody></table>`;
   }
 
   function renderScheduleTab(){
     renderBlockList();
     renderScheduleGrid();
+  }
+
+  function renderAssignmentsPanel(){
+    const el = document.getElementById('assignmentsContext');
+    if(!currentAssignmentContext){
+      el.innerHTML = '<div class="empty-hint">Click an assigning cell on the Schedule tab to land here.</div>';
+      return;
+    }
+    const ctx = currentAssignmentContext;
+    const day = state.days.find(d=>d.index===ctx.dayIndex);
+    const block = day ? day.blocks.find(b=>b.id===ctx.blockId) : null;
+    const team = teamById(ctx.teamId);
+    const resolved = resolveCell(ctx.dayIndex, ctx.blockId, ctx.division, ctx.teamId);
+    el.innerHTML = `<div class="list-row">
+      <div>
+        <strong>${escapeHtml(resolved.title||'(untitled)')}</strong>
+        <div class="meta">Day ${ctx.dayIndex} &middot; ${block?escapeHtml(block.label||'Block'):'Unknown block'}
+        ${block?`(${formatTime(block.startTime)}&ndash;${formatTime(block.endTime)})`:''} &middot; ${escapeHtml(ctx.division)}
+        ${team?' &middot; '+escapeHtml(team.name):''}</div>
+      </div>
+    </div>`;
   }
 
   // ============================================================
@@ -760,15 +899,19 @@
   // ============================================================
   // Event wiring
   // ============================================================
+  function activateTab(tabName){
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+    const btn = document.querySelector(`.tab-btn[data-tab="${tabName}"]`);
+    if(btn) btn.classList.add('active');
+    document.getElementById(tabName+'Panel').classList.add('active');
+    if(tabName==='groups') renderGroupsSection();
+    if(tabName==='schedule') renderScheduleTab();
+    if(tabName==='assignments') renderAssignmentsPanel();
+  }
+
   document.querySelectorAll('.tab-btn').forEach(btn=>{
-    btn.addEventListener('click',()=>{
-      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-      document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
-      btn.classList.add('active');
-      document.getElementById(btn.dataset.tab+'Panel').classList.add('active');
-      if(btn.dataset.tab==='groups') renderGroupsSection();
-      if(btn.dataset.tab==='schedule') renderScheduleTab();
-    });
+    btn.addEventListener('click', ()=>activateTab(btn.dataset.tab));
   });
 
   document.querySelectorAll('.day-tabs button').forEach(btn=>{
@@ -879,12 +1022,29 @@
     }
   });
 
-  // ---- delegated: schedule grid cells (blur/change) ----
+  // ---- delegated: schedule grid admin cell edits (blur/change) ----
   document.getElementById('scheduleGrid').addEventListener('change', (e)=>{
-    const t = e.target.closest('[data-role="gridCell"]');
-    if(!t) return;
-    state.scheduleAssignments[t.dataset.key] = t.value;
-    queueSave();
+    if(!isAdmin()) return;
+    const t = e.target;
+    if(t.matches('[data-role="cellTitle"]')){
+      getOrCreateCell(t.dataset.key).title = t.value;
+      queueSave();
+    } else if(t.matches('[data-role="cellType"]')){
+      getOrCreateCell(t.dataset.key).type = t.value;
+      queueSave();
+    } else if(t.matches('[data-role="teamCellTitle"]')){
+      const cell = getOrCreateCell(t.dataset.key);
+      cell.teamCells = cell.teamCells||{};
+      cell.teamCells[t.dataset.team] = cell.teamCells[t.dataset.team]||{title:'',type:'non-assigning'};
+      cell.teamCells[t.dataset.team].title = t.value;
+      queueSave();
+    } else if(t.matches('[data-role="teamCellType"]')){
+      const cell = getOrCreateCell(t.dataset.key);
+      cell.teamCells = cell.teamCells||{};
+      cell.teamCells[t.dataset.team] = cell.teamCells[t.dataset.team]||{title:'',type:'non-assigning'};
+      cell.teamCells[t.dataset.team].type = t.value;
+      queueSave();
+    }
   });
 
   // ---- delegated: clicks across the app ----
@@ -962,7 +1122,8 @@
       const dayIndex = parseInt(target.dataset.day,10), blockId = target.dataset.block;
       const day = state.days.find(d=>d.index===dayIndex);
       day.blocks = day.blocks.filter(b=>b.id!==blockId);
-      Object.keys(state.scheduleAssignments).forEach(k=>{ if(k.indexOf(dayIndex+'_'+blockId+'_')===0) delete state.scheduleAssignments[k]; });
+      Object.keys(state.scheduleCells).forEach(k=>{ if(k.indexOf(dayIndex+'_'+blockId+'_')===0) delete state.scheduleCells[k]; });
+      Object.keys(state.assignmentProgress).forEach(k=>{ if(k.indexOf(dayIndex+'_'+blockId+'_')===0) delete state.assignmentProgress[k]; });
       queueSave(); renderAll();
     } else if(action==='addBlockOverride'){
       if(!isAdmin()) return;
@@ -983,6 +1144,24 @@
       const block = day.blocks.find(b=>b.id===blockId);
       if(block && block.teamEndOverrides) delete block.teamEndOverrides[teamId];
       queueSave(); renderAll();
+    } else if(action==='togglePerTeam'){
+      if(!isAdmin()) return;
+      const key = target.dataset.key;
+      const cell = getOrCreateCell(key);
+      cell.perTeam = target.checked;
+      if(cell.perTeam){
+        cell.teamCells = cell.teamCells||{};
+        state.teams.forEach(t=>{ if(!cell.teamCells[t.id]) cell.teamCells[t.id] = {title:'',type:'non-assigning'}; });
+      }
+      queueSave(); renderScheduleGrid();
+    } else if(action==='goAssignments'){
+      currentAssignmentContext = {
+        dayIndex: parseInt(target.dataset.day,10),
+        blockId: target.dataset.block,
+        division: target.dataset.division,
+        teamId: currentTeamId()
+      };
+      activateTab('assignments');
     }
   });
 
