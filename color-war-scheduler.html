@@ -24,6 +24,7 @@
     --red:#C7473D;
     --red-tint:#FBEAE8;
     --assign-green:#DCEEE1;
+    --assign-green-pale:#EFF6F1;
     --assign-blue:#DCE7F4;
     --radius:10px;
     --font-display:'Teko',sans-serif;
@@ -196,6 +197,12 @@
     display:flex;justify-content:space-between;align-items:center;gap:10px;
   }
   .period-toggle-btn:hover{background:var(--paper);}
+  .period-toggle-btn.completion-green{background:var(--assign-green);}
+  .period-toggle-btn.completion-green:hover{background:var(--assign-green);filter:brightness(0.97);}
+  .period-toggle-btn.completion-light-green{background:var(--assign-green-pale);}
+  .period-toggle-btn.completion-light-green:hover{background:var(--assign-green-pale);filter:brightness(0.97);}
+  .period-toggle-btn.completion-red{background:var(--red-tint);}
+  .period-toggle-btn.completion-red:hover{background:var(--red-tint);filter:brightness(0.97);}
   .period-toggle-btn .chevron{font-size:20px;color:var(--ink-soft);flex:0 0 auto;}
   .period-body{padding:4px 20px 18px;border-top:1px solid var(--line);}
 
@@ -213,11 +220,13 @@
   .activities-panel{flex:1;min-width:280px;max-height:560px;overflow-y:auto;padding-right:4px;}
   .activities-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;}
   .activity-card{border:1px solid var(--line);border-radius:8px;padding:12px;background:var(--paper-2);}
+  .activity-card.fill-full{background:var(--assign-green);}
+  .activity-card.fill-over{background:var(--assign-blue);}
   .activity-card.drag-over{border-color:var(--gold-dark);box-shadow:0 0 0 2px var(--gold-tint);}
   .activity-card-header{display:flex;justify-content:space-between;align-items:flex-start;gap:6px;margin-bottom:4px;}
   .activity-card-header strong{font-size:14.5px;}
-  .cap-badge{font-family:var(--font-mono);font-size:11.5px;padding:2px 7px;border-radius:100px;background:var(--paper);border:1px solid var(--line);white-space:nowrap;}
-  .cap-badge.over{background:var(--assign-blue);border-color:#9FC2E0;}
+  .cap-badge{font-family:var(--font-mono);font-size:11.5px;padding:2px 7px;border-radius:100px;background:var(--paper-2);border:1px solid var(--line);white-space:nowrap;}
+  .cap-badge.over{border-color:#9FC2E0;font-weight:600;}
   .assign-chips{display:flex;flex-wrap:wrap;gap:4px;margin:8px 0;}
   .assign-chip{
     display:inline-flex;align-items:center;gap:5px;font-size:11.5px;background:var(--paper);
@@ -672,6 +681,11 @@
   function activityStatus(activity, camperCount){
     return camperCount > activity.camperCount ? 'over' : 'normal';
   }
+  function activityFillStatus(activity, camperCount){
+    if(camperCount > activity.camperCount) return 'over';
+    if(activity.camperCount>0 && camperCount === activity.camperCount) return 'full';
+    return 'notfull';
+  }
   function eligiblePeopleForPeriod(period, teamId){
     const groupIds = new Set(state.groups.filter(g=>g.teamId===teamId && period.divisions.includes(g.division)).map(g=>g.id));
     const campers = state.campers.filter(c=>c.teamId===teamId && groupIds.has(c.groupId)).map(c=>Object.assign({kind:'camper'},c));
@@ -845,6 +859,34 @@
     if(sawOver) return 'over';
     if(sawNormal) return 'normal';
     return 'none';
+  }
+
+  function isAbsentForPeriod(person, period){
+    return !!(person.attendance && person.attendance['day'+period.day]);
+  }
+  function isPersonAssignedInPeriod(period, teamId, personId){
+    return period.activities.some(a=>getActivityAssignees(period.id, a.id, teamId).includes(personId));
+  }
+  // Three-state completion: 'green' = every activity is at capacity AND every present
+  // person is assigned; 'light-green' = every present person is assigned, but there simply
+  // weren't enough of them to fill every activity; 'red' = neither condition is met.
+  function computeCompletion(period, teamId, activities, people){
+    const present = people.filter(p=>!isAbsentForPeriod(p, period));
+    const allPresentAssigned = present.length===0 || present.every(p=>isPersonAssignedInPeriod(period, teamId, p.id));
+    const allActivitiesFilled = activities.length===0 || activities.every(a=>getActivityCamperCount(period.id, a.id, teamId) >= a.camperCount);
+    if(allActivitiesFilled && allPresentAssigned) return 'green';
+    if(allPresentAssigned) return 'light-green';
+    return 'red';
+  }
+  function periodOverallCompletion(period, teamId){
+    return computeCompletion(period, teamId, period.activities, eligiblePeopleForPeriod(period, teamId));
+  }
+  function periodDivisionCompletion(period, teamId, division){
+    const groupIds = new Set(state.groups.filter(g=>g.teamId===teamId && g.division===division).map(g=>g.id));
+    const campers = state.campers.filter(c=>c.teamId===teamId && groupIds.has(c.groupId)).map(c=>Object.assign({kind:'camper'},c));
+    const counselors = state.counselors.filter(c=>c.teamId===teamId && groupIds.has(c.groupId)).map(c=>Object.assign({kind:'counselor'},c));
+    const activities = period.activities.filter(a=>(a.divisions||[]).includes(division));
+    return computeCompletion(period, teamId, activities, campers.concat(counselors));
   }
 
   // ---------- stats ----------
@@ -1150,6 +1192,12 @@
     el.innerHTML = `<table class="csv-grid"><thead>${header}</thead><tbody>${rows}</tbody></table>`;
   }
 
+  function findLinkedPeriodForCell(dayIndex, resolvedTitle){
+    const norm = (resolvedTitle||'').trim().toLowerCase();
+    if(!norm) return null;
+    return state.periods.find(p=>p.day===dayIndex && p.label.trim().toLowerCase()===norm) || null;
+  }
+
   function renderCaptainCell(day, block, division, teamId, colspan){
     const resolved = resolveCell(day.index, block.id, division, teamId);
     const colspanAttr = colspan ? ` colspan="${colspan}"` : '';
@@ -1157,9 +1205,13 @@
       return `<td${colspanAttr}><div class="sched-cell empty-cell">&mdash;</div></td>`;
     }
     if(resolved.type==='assigning'){
-      const progKey = cellKey(day.index, block.id, division)+'_'+teamId;
-      const pct = state.assignmentProgress[progKey]||0;
-      return `<td${colspanAttr}><div class="sched-cell assigning" style="background:${progressColor(pct)}" data-action="goAssignments" data-day="${day.index}" data-block="${block.id}" data-division="${escapeHtml(division)}" title="Click to open Assignments">${escapeHtml(resolved.title)||'&nbsp;'}</div></td>`;
+      const linkedPeriod = findLinkedPeriodForCell(day.index, resolved.title);
+      let cellColor = 'var(--red-tint)';
+      if(linkedPeriod){
+        const completion = periodDivisionCompletion(linkedPeriod, teamId, division);
+        cellColor = completion==='green' ? 'var(--assign-green)' : (completion==='light-green' ? 'var(--assign-green-pale)' : 'var(--red-tint)');
+      }
+      return `<td${colspanAttr}><div class="sched-cell assigning" style="background:${cellColor}" data-action="goAssignments" data-day="${day.index}" data-block="${block.id}" data-division="${escapeHtml(division)}" title="Click to open Assignments">${escapeHtml(resolved.title)||'&nbsp;'}</div></td>`;
     }
     return `<td${colspanAttr}><div class="sched-cell non-assigning">${escapeHtml(resolved.title)||'&nbsp;'}</div></td>`;
   }
@@ -1273,12 +1325,14 @@
     el.innerHTML = periods.map(p=>{
       const expanded = expandedPeriods.has(p.id);
       const divChips = p.divisions.map(d=>`<span class="chip" style="background:${DIVISION_COLORS[d]}"><span class="sw"></span>${escapeHtml(d)}</span>`).join(' ');
+      const completion = periodOverallCompletion(p, myTeamId);
+      const completionClass = completion==='green' ? 'completion-green' : (completion==='light-green' ? 'completion-light-green' : 'completion-red');
       let body = '';
       if(expanded){
         body = renderPeriodAssignmentBody(p, myTeamId);
       }
       return `<div class="card period-card">
-        <button class="period-toggle-btn" data-action="togglePeriodExpand" data-id="${p.id}">
+        <button class="period-toggle-btn ${completionClass}" data-action="togglePeriodExpand" data-id="${p.id}">
           <span>${escapeHtml(p.label)} <span class="meta" style="font-size:14px;">Day ${p.day}</span> &nbsp; ${divChips}</span>
           <span class="chevron">${expanded?'\u2212':'+'}</span>
         </button>
@@ -1375,6 +1429,8 @@
     const counselorIds = list.filter(id=>{ const p=personById(id); return p && p.kind==='counselor'; });
     const camperIds = list.filter(id=>{ const p=personById(id); return p && p.kind==='camper'; });
     const status = activityStatus(activity, camperIds.length);
+    const fillStatus = activityFillStatus(activity, camperIds.length);
+    const cardClass = fillStatus==='full' ? 'fill-full' : (fillStatus==='over' ? 'fill-over' : '');
     const countLabel = `${camperIds.length}/${activityCountLabel(activity)}`;
     const dots = (activity.divisions||[]).map(d=>`<span class="division-dot" style="background:${DIVISION_COLORS[d]}" title="${escapeHtml(d)}"></span>`).join('');
 
@@ -1386,7 +1442,7 @@
       }).join('') || '<span class="meta">None yet</span>';
     }
 
-    return `<div class="activity-card" data-period="${period.id}" data-activity="${activity.id}">
+    return `<div class="activity-card ${cardClass}" data-period="${period.id}" data-activity="${activity.id}">
       <div class="activity-card-header">
         <strong>${escapeHtml(activity.title)} ${dots}</strong>
         <span class="cap-badge ${status==='over'?'over':''}">${countLabel}</span>
@@ -1773,12 +1829,22 @@
       block.sharedAcrossDivisions = target.checked;
       queueSave(); renderScheduleGrid();
     } else if(action==='goAssignments'){
+      const dayIndex = parseInt(target.dataset.day,10);
+      const division = target.dataset.division;
       currentAssignmentContext = {
-        dayIndex: parseInt(target.dataset.day,10),
+        dayIndex,
         blockId: target.dataset.block,
-        division: target.dataset.division,
+        division,
         teamId: currentTeamId()
       };
+      const day = state.days.find(d=>d.index===dayIndex);
+      const block = day ? day.blocks.find(b=>b.id===target.dataset.block) : null;
+      const resolvedTitle = block ? resolveCell(dayIndex, block.id, division, currentTeamId()).title : '';
+      const linkedPeriod = findLinkedPeriodForCell(dayIndex, resolvedTitle);
+      if(linkedPeriod){
+        expandedPeriods.add(linkedPeriod.id);
+        periodViewFilter.set(linkedPeriod.id, division);
+      }
       activateTab('assignments');
     } else if(action==='delPeriod'){
       if(!isAdmin()) return;
