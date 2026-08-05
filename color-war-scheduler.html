@@ -657,10 +657,18 @@
         if(b.capacityLabel) html += ' ('+escapeHtml(b.capacityLabel)+')';
         if(b.divisions && b.divisions.length) html += '<br/><b>Divisions:</b> '+b.divisions.map(escapeHtml).join(', ');
         html += '<br/><b>Counselors:</b> '+(b.counselors.length?b.counselors.map(escapeHtml).join(', '):'\u2014');
-        html += '<br/><b>Campers:</b> '+(b.campers.length?b.campers.map(escapeHtml).join(', '):'\u2014')+'</p>';
+        html += '</p>';
+        html += '<p style="margin-bottom:2px;"><b>Campers:</b></p>';
+        html += b.campers.length
+          ? '<ol style="margin-top:0;">'+b.campers.map(c=>'<li>'+escapeHtml(c)+'</li>').join('')+'</ol>'
+          : '<p>\u2014</p>';
       }
       else if(b.type==='assignment'){
-        html += `<p><b>${escapeHtml(b.label)}</b><br/>Campers: ${b.campers.length?b.campers.map(escapeHtml).join(', '):'\u2014'}</p>`;
+        html += `<p><b>${escapeHtml(b.label)}</b></p>`;
+        html += '<p style="margin-bottom:2px;"><b>Campers:</b></p>';
+        html += b.campers.length
+          ? '<ol style="margin-top:0;">'+b.campers.map(c=>'<li>'+escapeHtml(c)+'</li>').join('')+'</ol>'
+          : '<p>\u2014</p>';
       }
       else if(b.type==='note') html += `<p><i>${escapeHtml(b.text)}</i></p>`;
       else if(b.type==='pagebreak') html += '<br clear="all" style="page-break-before:always" />';
@@ -715,17 +723,35 @@
         doc.text(headerLine, marginX, y);
         y += 14;
         doc.setFont(undefined,'normal'); doc.setFontSize(10);
-        const lines = [];
-        if(b.type==='activity' && b.divisions && b.divisions.length) lines.push('Divisions: '+b.divisions.join(', '));
-        if(b.type==='activity') lines.push('Counselors: '+(b.counselors.length?b.counselors.join(', '):'\u2014'));
-        lines.push('Campers: '+(b.campers.length?b.campers.join(', '):'\u2014'));
-        lines.forEach(line=>{
+        const infoLines = [];
+        if(b.type==='activity' && b.divisions && b.divisions.length) infoLines.push('Divisions: '+b.divisions.join(', '));
+        if(b.type==='activity') infoLines.push('Counselors: '+(b.counselors.length?b.counselors.join(', '):'\u2014'));
+        infoLines.forEach(line=>{
           doc.splitTextToSize(line, pageWidth-marginX*2).forEach(wrapped=>{
             ensureSpace(14);
             doc.text(wrapped, marginX, y);
             y += 13;
           });
         });
+        ensureSpace(14);
+        doc.setFont(undefined,'bold');
+        doc.text('Campers:', marginX, y);
+        y += 13;
+        doc.setFont(undefined,'normal');
+        if(b.campers.length===0){
+          ensureSpace(13);
+          doc.text('\u2014', marginX+12, y);
+          y += 13;
+        } else {
+          b.campers.forEach((camper, i)=>{
+            const numbered = (i+1)+'. '+camper;
+            doc.splitTextToSize(numbered, pageWidth-marginX*2-12).forEach(wrapped=>{
+              ensureSpace(13);
+              doc.text(wrapped, marginX+12, y);
+              y += 13;
+            });
+          });
+        }
         y += 8;
       } else if(b.type==='note'){
         ensureSpace(16);
