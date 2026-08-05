@@ -646,12 +646,16 @@
     let html = '';
     blocks.forEach(b=>{
       if(b.type==='title') html += `<h1>${escapeHtml(b.text)}</h1>`;
-      else if(b.type==='heading') html += `<h${b.level||2}>${escapeHtml(b.text)}</h${b.level||2}>`;
+      else if(b.type==='heading'){
+        const inner = b.highlight ? `<span style="background-color:#FFF176;padding:1px 5px;">${escapeHtml(b.text)}</span>` : escapeHtml(b.text);
+        html += `<h${b.level||2}>${inner}</h${b.level||2}>`;
+      }
       else if(b.type==='table') html += htmlTable(b.headers, b.rows);
       else if(b.type==='activity'){
         html += `<p><b>${escapeHtml(b.title)}</b>`;
         if(b.location) html += ' \u2014 '+escapeHtml(b.location);
         if(b.capacityLabel) html += ' ('+escapeHtml(b.capacityLabel)+')';
+        if(b.divisions && b.divisions.length) html += '<br/><b>Divisions:</b> '+b.divisions.map(escapeHtml).join(', ');
         html += '<br/><b>Counselors:</b> '+(b.counselors.length?b.counselors.map(escapeHtml).join(', '):'\u2014');
         html += '<br/><b>Campers:</b> '+(b.campers.length?b.campers.map(escapeHtml).join(', '):'\u2014')+'</p>';
       }
@@ -659,6 +663,7 @@
         html += `<p><b>${escapeHtml(b.label)}</b><br/>Campers: ${b.campers.length?b.campers.map(escapeHtml).join(', '):'\u2014'}</p>`;
       }
       else if(b.type==='note') html += `<p><i>${escapeHtml(b.text)}</i></p>`;
+      else if(b.type==='pagebreak') html += '<br clear="all" style="page-break-before:always" />';
     });
     return html;
   }
@@ -679,8 +684,14 @@
         doc.text(b.text, marginX, y);
         y += 26; doc.setFont(undefined,'normal');
       } else if(b.type==='heading'){
-        ensureSpace(22);
-        doc.setFontSize(b.level===3?12:14); doc.setFont(undefined,'bold');
+        ensureSpace(26);
+        const fontSize = b.level===3?12:14;
+        doc.setFontSize(fontSize); doc.setFont(undefined,'bold');
+        if(b.highlight){
+          const textWidth = doc.getTextWidth(b.text);
+          doc.setFillColor(255,241,140);
+          doc.rect(marginX-3, y-fontSize, textWidth+6, fontSize+6, 'F');
+        }
         doc.text(b.text, marginX, y);
         y += 18; doc.setFont(undefined,'normal');
       } else if(b.type==='table'){
@@ -705,6 +716,7 @@
         y += 14;
         doc.setFont(undefined,'normal'); doc.setFontSize(10);
         const lines = [];
+        if(b.type==='activity' && b.divisions && b.divisions.length) lines.push('Divisions: '+b.divisions.join(', '));
         if(b.type==='activity') lines.push('Counselors: '+(b.counselors.length?b.counselors.join(', '):'\u2014'));
         lines.push('Campers: '+(b.campers.length?b.campers.join(', '):'\u2014'));
         lines.forEach(line=>{
@@ -720,6 +732,9 @@
         doc.setFontSize(10); doc.setFont(undefined,'italic');
         doc.text(b.text, marginX, y);
         y += 16; doc.setFont(undefined,'normal');
+      } else if(b.type==='pagebreak'){
+        doc.addPage();
+        y = 44;
       }
     });
     doc.save(filename);
@@ -1721,14 +1736,15 @@
 
   function buildAllDivisionScheduleBlocks(teamId){
     const blocks = [{type:'title', text:reportTitle('All-Division Schedule', teamId)}];
-    state.days.forEach(day=>{
+    state.days.forEach((day, idx)=>{
+      if(idx>0) blocks.push({type:'pagebreak'});
       blocks.push({type:'heading', level:2, text:'Day '+day.index});
       const dayBlocks = day.blocks.slice().sort((a,b)=>a.startTime.localeCompare(b.startTime));
       if(dayBlocks.length===0){ blocks.push({type:'note', text:'No blocks scheduled.'}); return; }
-      const headers = ['Block'].concat(DIVISION_ORDER);
+      const headers = ['Time'].concat(DIVISION_ORDER);
       const rows = dayBlocks.map(b=>{
         const timeLabel = formatTime(b.startTime)+'\u2013'+formatTime(b.endTime);
-        const row = [(b.label||'Block')+' ('+timeLabel+')'];
+        const row = [timeLabel];
         DIVISION_ORDER.forEach(div=>{
           const resolved = resolvedCellForDivision(day, b, div, teamId);
           row.push(resolved.title || '\u2014');
@@ -1742,16 +1758,17 @@
 
   function buildSingleDivisionScheduleBlocks(teamId, division){
     const blocks = [{type:'title', text:reportTitle(division+' Schedule', teamId)}];
-    state.days.forEach(day=>{
+    state.days.forEach((day, idx)=>{
+      if(idx>0) blocks.push({type:'pagebreak'});
       blocks.push({type:'heading', level:2, text:'Day '+day.index});
       const dayBlocks = day.blocks.slice().sort((a,b)=>a.startTime.localeCompare(b.startTime));
       if(dayBlocks.length===0){ blocks.push({type:'note', text:'No blocks scheduled.'}); return; }
       const rows = dayBlocks.map(b=>{
         const timeLabel = formatTime(b.startTime)+'\u2013'+formatTime(b.endTime);
         const resolved = resolvedCellForDivision(day, b, division, teamId);
-        return [b.label||'Block', timeLabel, resolved.title||'\u2014'];
+        return [timeLabel, resolved.title||'\u2014'];
       });
-      blocks.push({type:'table', headers:['Block','Time',division], rows});
+      blocks.push({type:'table', headers:['Time',division], rows});
     });
     return blocks;
   }
@@ -1759,19 +1776,20 @@
   function buildActivitiesRosterBlocks(teamId){
     const blocks = [{type:'title', text:reportTitle('Activities Roster', teamId)}];
     let any = false;
+    let firstPeriod = true;
     [1,2,3].forEach(dayIdx=>{
       const periods = state.periods.filter(p=>p.day===dayIdx);
-      if(periods.length===0) return;
-      any = true;
-      blocks.push({type:'heading', level:2, text:'Day '+dayIdx});
       periods.forEach(period=>{
-        blocks.push({type:'heading', level:3, text:period.label});
+        any = true;
+        if(!firstPeriod) blocks.push({type:'pagebreak'});
+        firstPeriod = false;
+        blocks.push({type:'heading', level:2, text:'Day '+dayIdx+' \u2014 '+period.label});
         if(period.activities.length===0){ blocks.push({type:'note', text:'No activities.'}); return; }
         period.activities.forEach(act=>{
           const list = getActivityAssignees(period.id, act.id, teamId);
           const counselors = list.filter(id=>{ const p=personById(id); return p && p.kind==='counselor'; }).map(id=>personDisplayName(personById(id)));
           const campers = list.filter(id=>{ const p=personById(id); return p && p.kind==='camper'; }).map(id=>personDisplayName(personById(id)));
-          blocks.push({type:'activity', title:act.title, location:act.location, capacityLabel:campers.length+'/'+activityCountLabel(act), counselors, campers});
+          blocks.push({type:'activity', title:act.title, location:act.location, divisions:(act.divisions||[]), capacityLabel:campers.length+'/'+activityCountLabel(act), counselors, campers});
         });
       });
     });
@@ -1783,8 +1801,9 @@
     const blocks = [{type:'title', text:reportTitle('Counselor Assignments', teamId)}];
     const counselors = state.counselors.filter(c=>c.teamId===teamId).sort((a,b)=>a.name.localeCompare(b.name));
     if(counselors.length===0){ blocks.push({type:'note', text:'No counselors on this team.'}); return blocks; }
-    counselors.forEach(counselor=>{
-      blocks.push({type:'heading', level:3, text:personDisplayName(counselor)});
+    counselors.forEach((counselor, idx)=>{
+      if(idx>0) blocks.push({type:'pagebreak'});
+      blocks.push({type:'heading', level:2, text:personDisplayName(counselor), highlight:true});
       let any = false;
       [1,2,3].forEach(dayIdx=>{
         state.periods.filter(p=>p.day===dayIdx).forEach(period=>{
