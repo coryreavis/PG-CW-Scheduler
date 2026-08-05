@@ -692,6 +692,21 @@
     const counselors = state.counselors.filter(c=>c.teamId===teamId && groupIds.has(c.groupId)).map(c=>Object.assign({kind:'counselor'},c));
     return campers.concat(counselors).sort((a,b)=>a.name.localeCompare(b.name));
   }
+  // Titles (lowercased/trimmed) of activities this camper is currently assigned to in periods
+  // OTHER than excludePeriodId — used to stop the same camper repeating a duplicate-titled
+  // activity (e.g. "Basketball" appearing in both Period 1 and Period 3).
+  function camperCompletedActivityTitles(camperId, teamId, excludePeriodId){
+    const titles = new Set();
+    state.periods.forEach(period=>{
+      if(period.id===excludePeriodId) return;
+      period.activities.forEach(activity=>{
+        if(getActivityAssignees(period.id, activity.id, teamId).includes(camperId)){
+          titles.add(activity.title.trim().toLowerCase());
+        }
+      });
+    });
+    return titles;
+  }
   function canAssignPersonToActivity(period, activity, teamId, personId){
     const person = personById(personId);
     if(!person) return {ok:false, reason:'not-found'};
@@ -707,6 +722,10 @@
       if(camperCount >= activity.camperCount && !activity.flexible){
         return {ok:false, reason:'full'};
       }
+      const doneTitles = camperCompletedActivityTitles(personId, teamId, period.id);
+      if(doneTitles.has(activity.title.trim().toLowerCase())){
+        return {ok:false, reason:'duplicate'};
+      }
     }
     return {ok:true};
   }
@@ -717,6 +736,8 @@
         alert(`${escapeHtml(activity.title)} isn\u2019t open to that person\u2019s division.`);
       } else if(check.reason==='full'){
         alert(`${escapeHtml(activity.title)} is already full (${activity.camperCount}). Only activities marked with * can take extra people.`);
+      } else if(check.reason==='duplicate'){
+        alert(`This camper has already done "${activity.title}" in another period.`);
       }
       return false;
     }
@@ -752,7 +773,14 @@
       return g ? g.division : null;
     }
     function eligibleFor(pool, activity){
-      return pool.filter(p=>(activity.divisions||[]).includes(personDivision(p)));
+      return pool.filter(p=>{
+        if(!(activity.divisions||[]).includes(personDivision(p))) return false;
+        if(p.kind==='camper'){
+          const doneTitles = camperCompletedActivityTitles(p.id, teamId, period.id);
+          if(doneTitles.has(activity.title.trim().toLowerCase())) return false;
+        }
+        return true;
+      });
     }
     function pickRandom(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
     function removeFromPool(pool, personId){
@@ -965,13 +993,13 @@
     const camperRows = visibleCampers.map(c=>renderPersonRow(c,'camper')).join('') || `<div class="empty-hint">${isAdmin() ? 'No campers yet.' : 'No campers from your team in this group.'}</div>`;
 
     const addCounselorForm = `<div class="row" style="align-items:flex-end;margin-top:8px;">
-      <div style="flex:1;"><input type="text" data-role="newCounselorName" data-group="${g.id}" placeholder="Counselor name" style="margin-bottom:0;"></div>
-      <div><button class="btn secondary" data-action="addCounselor" data-group="${g.id}">Add counselor</button></div>
+      <div style="flex:1;"><textarea data-role="newCounselorName" data-group="${g.id}" placeholder="Counselor name (one per line for multiple)" style="margin-bottom:0;min-height:38px;"></textarea></div>
+      <div><button class="btn secondary" data-action="addCounselor" data-group="${g.id}">Add counselor(s)</button></div>
     </div>`;
 
     const addCamperForm = `<div class="row" style="align-items:flex-end;margin-top:8px;">
-      <div style="flex:1;"><input type="text" data-role="newCamperName" data-group="${g.id}" placeholder="Camper name" style="margin-bottom:0;"></div>
-      <div><button class="btn secondary" data-action="addCamper" data-group="${g.id}">Add camper</button></div>
+      <div style="flex:1;"><textarea data-role="newCamperName" data-group="${g.id}" placeholder="Camper name (one per line for multiple)" style="margin-bottom:0;min-height:38px;"></textarea></div>
+      <div><button class="btn secondary" data-action="addCamper" data-group="${g.id}">Add camper(s)</button></div>
     </div>`;
 
     return `<div class="card group-card">
@@ -1743,20 +1771,26 @@
       const group = groupById(groupId);
       if(!group) return;
       if(!isAdmin() && group.teamId!==currentTeamId()) return;
-      const input = document.querySelector(`input[data-role="newCounselorName"][data-group="${groupId}"]`);
-      const name = input.value.trim();
-      if(!name) return;
-      state.counselors.push({id:uid('counselor'), name, groupId, teamId:group.teamId, attendance:{day1:false,day2:false,day3:false}, note:''});
+      const input = document.querySelector(`textarea[data-role="newCounselorName"][data-group="${groupId}"]`);
+      const names = input.value.split('\n').map(s=>s.trim()).filter(Boolean);
+      if(names.length===0) return;
+      names.forEach(name=>{
+        state.counselors.push({id:uid('counselor'), name, groupId, teamId:group.teamId, attendance:{day1:false,day2:false,day3:false}, note:''});
+      });
+      input.value='';
       queueSave(); renderAll();
     } else if(action==='addCamper'){
       const groupId = target.dataset.group;
       const group = groupById(groupId);
       if(!group) return;
       if(!isAdmin() && group.teamId!==currentTeamId()) return;
-      const nameInput = document.querySelector(`input[data-role="newCamperName"][data-group="${groupId}"]`);
-      const name = nameInput.value.trim();
-      if(!name) return;
-      state.campers.push({id:uid('camper'), name, teamId:group.teamId, groupId, attendance:{day1:false,day2:false,day3:false}, note:''});
+      const nameInput = document.querySelector(`textarea[data-role="newCamperName"][data-group="${groupId}"]`);
+      const names = nameInput.value.split('\n').map(s=>s.trim()).filter(Boolean);
+      if(names.length===0) return;
+      names.forEach(name=>{
+        state.campers.push({id:uid('camper'), name, teamId:group.teamId, groupId, attendance:{day1:false,day2:false,day3:false}, note:''});
+      });
+      nameInput.value='';
       queueSave(); renderAll();
     } else if(action==='delCounselor'){
       const id = target.dataset.id;
