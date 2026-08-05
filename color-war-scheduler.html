@@ -9,6 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Teko:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
   :root{
     --ink:#1C2126;
@@ -300,6 +301,7 @@
     <button class="tab-btn active" data-tab="schedule">Schedule</button>
     <button class="tab-btn" data-tab="groups">Groups</button>
     <button class="tab-btn" data-tab="assignments">Assignments</button>
+    <button class="tab-btn" data-tab="print">Print</button>
   </div>
 
   <!-- ================= SCHEDULE ================= -->
@@ -419,6 +421,56 @@
     <div id="periodsList"></div>
   </div>
 
+  <!-- ================= PRINT ================= -->
+  <div class="panel" id="printPanel">
+    <div id="printSetupWarning" style="display:none;background:#FBEAE8;border:1px solid #C7473D;color:#7A2822;border-radius:8px;padding:12px 16px;margin-bottom:18px;font-size:13.5px;line-height:1.5;">
+      <strong>Setup needed:</strong> Google sign-in isn't configured yet. Open this file in a text editor, find <code>GOOGLE_CLIENT_ID</code> near the top of the <code>&lt;script&gt;</code> tag, and paste in a Google OAuth client ID.
+    </div>
+
+    <div class="card">
+      <h2>Connect Google</h2>
+      <p class="sub">Sign in so reports below can be created directly as Google Docs in your Drive. Sign-in lasts about an hour before you'll need to reconnect.</p>
+      <div id="googleAuthStatus" class="meta" style="margin-bottom:10px;"></div>
+      <button class="btn gold" id="googleConnectBtn">Sign in with Google</button>
+    </div>
+
+    <div class="card">
+      <h2>Reports</h2>
+      <p class="sub">Each report opens as a new Google Doc once created.</p>
+
+      <div class="row" style="align-items:flex-end;" id="printTeamRow">
+        <div style="flex:1;"><label>Team</label><select id="printTeamSelect"></select></div>
+      </div>
+
+      <div class="list-row">
+        <div><strong>All-Division Schedule</strong><div class="meta">Every division, all 3 days, in one doc.</div></div>
+        <button class="btn secondary" data-action="printAllDivision">Create Doc</button>
+      </div>
+      <div class="list-row">
+        <div>
+          <strong>Single Division Schedule</strong>
+          <div class="meta">All 3 days for one division.</div>
+          <select id="printDivisionSelect" style="margin-top:6px;width:auto;">
+            <option value="Pinecones">Pinecones</option>
+            <option value="Voyagers">Voyagers</option>
+            <option value="Juniors">Juniors</option>
+            <option value="Seniors">Seniors</option>
+            <option value="7th Grade">7th Grade</option>
+          </select>
+        </div>
+        <button class="btn secondary" data-action="printSingleDivision">Create Doc</button>
+      </div>
+      <div class="list-row">
+        <div><strong>Activities Roster</strong><div class="meta">Every activity, with assigned campers &amp; counselors filled in.</div></div>
+        <button class="btn secondary" data-action="printActivitiesRoster">Create Doc</button>
+      </div>
+      <div class="list-row">
+        <div><strong>Counselor Assignments</strong><div class="meta">Grouped by counselor, showing their activities and campers.</div></div>
+        <button class="btn secondary" data-action="printCounselorActivities">Create Doc</button>
+      </div>
+    </div>
+  </div>
+
   <div class="footer-note">Data saves automatically and syncs in real time with anyone using the same access code.</div>
 </div>
 
@@ -440,6 +492,10 @@
   const SHARED_ACCESS_CODE = "pg-cw-2026";
   const ADMIN_PASSCODE = "admin123";
   const ROLE_STORAGE_KEY = 'colorwar-role-v1';
+  // For the Print tab's "Create Google Doc" buttons. Get this from Google Cloud Console:
+  // create a project > enable the Google Drive API > OAuth consent screen > Credentials >
+  // Create OAuth client ID (Web application) > add this page's URL under Authorized JavaScript origins.
+  const GOOGLE_CLIENT_ID = "PASTE_YOUR_GOOGLE_CLIENT_ID_HERE";
   // ============================================================
 
   const DIVISION_ORDER = ['Pinecones','Voyagers','Juniors','Seniors','7th Grade'];
@@ -540,6 +596,63 @@
     if(!division) return null;
     const gender = x<=4 ? 'Girls':'Boys';
     return {division, grade:g, gender, label:ORDINALS[g]+' Grade '+gender+' ('+division+')'};
+  }
+
+  // ---------- Google Docs (via Drive HTML->Doc conversion) ----------
+  let googleAccessToken = null;
+  let googleTokenClient = null;
+  function isGoogleConfigured(){
+    return GOOGLE_CLIENT_ID && GOOGLE_CLIENT_ID.indexOf('PASTE_YOUR')!==0;
+  }
+  function getGoogleTokenClient(){
+    if(googleTokenClient) return googleTokenClient;
+    if(typeof google==='undefined' || !google.accounts || !google.accounts.oauth2) return null;
+    googleTokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: GOOGLE_CLIENT_ID,
+      scope: 'https://www.googleapis.com/auth/drive.file',
+      callback: (resp)=>{
+        if(resp && resp.access_token){
+          googleAccessToken = resp.access_token;
+          renderPrintPanel();
+        }
+      }
+    });
+    return googleTokenClient;
+  }
+  async function createGoogleDoc(title, html){
+    if(!googleAccessToken){ alert('Sign in with Google first.'); return false; }
+    const fullHtml = `<html><head><meta charset="utf-8"></head><body>${html}</body></html>`;
+    const boundary = 'colorwar-doc-boundary';
+    const body =
+      `--${boundary}\r\n`+
+      `Content-Type: application/json; charset=UTF-8\r\n\r\n`+
+      JSON.stringify({name:title, mimeType:'application/vnd.google-apps.document'})+`\r\n`+
+      `--${boundary}\r\n`+
+      `Content-Type: text/html; charset=UTF-8\r\n\r\n`+
+      fullHtml+`\r\n`+
+      `--${boundary}--`;
+    try{
+      const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+        method:'POST',
+        headers:{
+          'Authorization':'Bearer '+googleAccessToken,
+          'Content-Type':'multipart/related; boundary='+boundary
+        },
+        body
+      });
+      const data = await res.json();
+      if(data.id){
+        window.open('https://docs.google.com/document/d/'+data.id+'/edit', '_blank');
+        return true;
+      }
+      console.error('Drive API error', data);
+      alert('Could not create the Google Doc. Check the browser console for details \u2014 your sign-in may have expired, or the Drive API may not be enabled on your Google Cloud project.');
+      return false;
+    }catch(e){
+      console.error(e);
+      alert('Could not create the Google Doc. Check your internet connection and try signing in again.');
+      return false;
+    }
   }
 
   // ---------- Firebase ----------
@@ -649,6 +762,10 @@
       return tc ? {title:tc.title||'', type:tc.type||'non-assigning'} : {title:'', type:'non-assigning'};
     }
     return {title:cell.title||'', type:cell.type||'non-assigning'};
+  }
+  function resolvedCellForDivision(day, block, division, teamId){
+    if(block.sharedAcrossDivisions) return resolveCell(day.index, block.id, 'ALL', teamId);
+    return resolveCell(day.index, block.id, division, teamId);
   }
   function progressColor(pct){
     if(pct>=100) return 'var(--green-tint)';
@@ -1494,6 +1611,7 @@
     renderGroupsSection();
     renderScheduleTab();
     renderAssignmentsPanel();
+    renderPrintPanel();
   }
 
   // ============================================================
@@ -1523,6 +1641,141 @@
   }
 
   // ============================================================
+  // Print reports (built as HTML, uploaded to Drive as Google Docs)
+  // ============================================================
+  function htmlTable(headers, rows){
+    let h = '<table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;width:100%;margin-bottom:16px;"><tr>';
+    headers.forEach(hd=>{ h += '<th style="background:#f0f0f0;text-align:left;">'+escapeHtml(hd)+'</th>'; });
+    h += '</tr>';
+    rows.forEach(r=>{
+      h += '<tr>';
+      r.forEach(cell=>{ h += '<td>'+cell+'</td>'; });
+      h += '</tr>';
+    });
+    h += '</table>';
+    return h;
+  }
+  function reportHeading(title, teamId){
+    const team = teamById(teamId);
+    return `<h1>${escapeHtml(state.campName||'Color War')} \u2014 ${escapeHtml(title)}${team?' \u2014 '+escapeHtml(team.name):''}</h1>`;
+  }
+
+  function buildAllDivisionScheduleHtml(teamId){
+    let html = reportHeading('All-Division Schedule', teamId);
+    state.days.forEach(day=>{
+      html += `<h2>Day ${day.index}</h2>`;
+      const blocks = day.blocks.slice().sort((a,b)=>a.startTime.localeCompare(b.startTime));
+      if(blocks.length===0){ html += '<p><i>No blocks scheduled.</i></p>'; return; }
+      const headers = ['Block'].concat(DIVISION_ORDER);
+      const rows = blocks.map(b=>{
+        const timeLabel = formatTime(b.startTime)+'\u2013'+formatTime(b.endTime);
+        const row = [`<b>${escapeHtml(b.label||'Block')}</b><br/>${timeLabel}`];
+        DIVISION_ORDER.forEach(div=>{
+          const resolved = resolvedCellForDivision(day, b, div, teamId);
+          row.push(escapeHtml(resolved.title||'\u2014'));
+        });
+        return row;
+      });
+      html += htmlTable(headers, rows);
+    });
+    return html;
+  }
+
+  function buildSingleDivisionScheduleHtml(teamId, division){
+    let html = reportHeading(division+' Schedule', teamId);
+    state.days.forEach(day=>{
+      html += `<h2>Day ${day.index}</h2>`;
+      const blocks = day.blocks.slice().sort((a,b)=>a.startTime.localeCompare(b.startTime));
+      if(blocks.length===0){ html += '<p><i>No blocks scheduled.</i></p>'; return; }
+      const rows = blocks.map(b=>{
+        const timeLabel = formatTime(b.startTime)+'\u2013'+formatTime(b.endTime);
+        const resolved = resolvedCellForDivision(day, b, division, teamId);
+        return [`<b>${escapeHtml(b.label||'Block')}</b>`, timeLabel, escapeHtml(resolved.title||'\u2014')];
+      });
+      html += htmlTable(['Block','Time',division], rows);
+    });
+    return html;
+  }
+
+  function buildActivitiesRosterHtml(teamId){
+    let html = reportHeading('Activities Roster', teamId);
+    let any = false;
+    [1,2,3].forEach(dayIdx=>{
+      const periods = state.periods.filter(p=>p.day===dayIdx);
+      if(periods.length===0) return;
+      any = true;
+      html += `<h2>Day ${dayIdx}</h2>`;
+      periods.forEach(period=>{
+        html += `<h3>${escapeHtml(period.label)}</h3>`;
+        if(period.activities.length===0){ html += '<p><i>No activities.</i></p>'; return; }
+        period.activities.forEach(act=>{
+          const list = getActivityAssignees(period.id, act.id, teamId);
+          const counselors = list.filter(id=>{ const p=personById(id); return p && p.kind==='counselor'; }).map(id=>escapeHtml(personDisplayName(personById(id))));
+          const campers = list.filter(id=>{ const p=personById(id); return p && p.kind==='camper'; }).map(id=>escapeHtml(personDisplayName(personById(id))));
+          html += `<p><b>${escapeHtml(act.title)}</b>`;
+          if(act.location) html += ' \u2014 '+escapeHtml(act.location);
+          html += ` (${campers.length}/${activityCountLabel(act)})<br/>`;
+          html += `<b>Counselors:</b> ${counselors.length?counselors.join(', '):'\u2014'}<br/>`;
+          html += `<b>Campers:</b> ${campers.length?campers.join(', '):'\u2014'}</p>`;
+        });
+      });
+    });
+    if(!any) html += '<p><i>No periods have been created yet.</i></p>';
+    return html;
+  }
+
+  function buildCounselorActivitiesHtml(teamId){
+    let html = reportHeading('Counselor Assignments', teamId);
+    const counselors = state.counselors.filter(c=>c.teamId===teamId).sort((a,b)=>a.name.localeCompare(b.name));
+    if(counselors.length===0){ html += '<p><i>No counselors on this team.</i></p>'; return html; }
+    counselors.forEach(counselor=>{
+      html += `<h3>${escapeHtml(personDisplayName(counselor))}</h3>`;
+      let any = false;
+      [1,2,3].forEach(dayIdx=>{
+        state.periods.filter(p=>p.day===dayIdx).forEach(period=>{
+          period.activities.forEach(act=>{
+            const list = getActivityAssignees(period.id, act.id, teamId);
+            if(list.includes(counselor.id)){
+              any = true;
+              const campers = list.filter(id=>{ const p=personById(id); return p && p.kind==='camper'; }).map(id=>escapeHtml(personDisplayName(personById(id))));
+              html += `<p><b>Day ${dayIdx} \u2014 ${escapeHtml(period.label)} \u2014 ${escapeHtml(act.title)}</b><br/>Campers: ${campers.length?campers.join(', '):'\u2014'}</p>`;
+            }
+          });
+        });
+      });
+      if(!any) html += '<p><i>Not assigned to any activities yet.</i></p>';
+    });
+    return html;
+  }
+
+  function renderPrintPanel(){
+    document.getElementById('printSetupWarning').style.display = isGoogleConfigured() ? 'none' : 'block';
+    const statusEl = document.getElementById('googleAuthStatus');
+    const connectBtn = document.getElementById('googleConnectBtn');
+    if(googleAccessToken){
+      statusEl.innerHTML = '<span style="color:var(--green);font-weight:600;">Connected \u2014 ready to create Docs.</span>';
+      connectBtn.textContent = 'Reconnect Google';
+    } else {
+      statusEl.textContent = 'Not connected yet.';
+      connectBtn.textContent = 'Sign in with Google';
+    }
+    const teamRow = document.getElementById('printTeamRow');
+    const teamSelect = document.getElementById('printTeamSelect');
+    if(isAdmin()){
+      teamRow.style.display = 'flex';
+      const cur = teamSelect.value;
+      teamSelect.innerHTML = state.teams.map(t=>`<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('') || '<option value="">Add a team first</option>';
+      if(state.teams.some(t=>t.id===cur)) teamSelect.value = cur;
+    } else {
+      teamRow.style.display = 'none';
+    }
+  }
+
+  function currentPrintTeamId(){
+    return isAdmin() ? (document.getElementById('printTeamSelect').value || null) : currentTeamId();
+  }
+
+  // ============================================================
   // Event wiring
   // ============================================================
   function activateTab(tabName){
@@ -1534,6 +1787,7 @@
     if(tabName==='groups') renderGroupsSection();
     if(tabName==='schedule') renderScheduleTab();
     if(tabName==='assignments') renderAssignmentsPanel();
+    if(tabName==='print') renderPrintPanel();
   }
 
   document.querySelectorAll('.tab-btn').forEach(btn=>{
@@ -1702,6 +1956,12 @@
   document.getElementById('exportRosterBtn').addEventListener('click', exportRosterCsv);
   document.getElementById('printBtn').addEventListener('click', ()=>window.print());
 
+  document.getElementById('googleConnectBtn').addEventListener('click', ()=>{
+    const tc = getGoogleTokenClient();
+    if(!tc){ alert('Google sign-in is still loading \u2014 wait a moment and try again.'); return; }
+    tc.requestAccessToken();
+  });
+
   // ---- delegated: note inputs (blur/change) ----
   document.getElementById('groupsPanel').addEventListener('change', (e)=>{
     const t = e.target;
@@ -1742,7 +2002,7 @@
   });
 
   // ---- delegated: clicks across the app ----
-  document.getElementById('app').addEventListener('click', (e)=>{
+  document.getElementById('app').addEventListener('click', async (e)=>{
     const target = e.target.closest('[data-action]');
     if(!target) return;
     const action = target.dataset.action;
@@ -1938,6 +2198,34 @@
       }
       runAutofill(period, myTeamId, scope.filteredActivities, scope.filteredGroups);
       renderAssignmentsPanel();
+    } else if(action==='printAllDivision' || action==='printSingleDivision' || action==='printActivitiesRoster' || action==='printCounselorActivities'){
+      const teamId = currentPrintTeamId();
+      if(!teamId){ alert('Pick a team first.'); return; }
+      if(!googleAccessToken){ alert('Sign in with Google first.'); return; }
+      const originalText = target.textContent;
+      target.disabled = true;
+      target.textContent = 'Creating\u2026';
+      try{
+        let title, html;
+        if(action==='printAllDivision'){
+          title = (state.campName||'Color War')+' - All-Division Schedule'+(teamById(teamId)?' - '+teamById(teamId).name:'');
+          html = buildAllDivisionScheduleHtml(teamId);
+        } else if(action==='printSingleDivision'){
+          const division = document.getElementById('printDivisionSelect').value;
+          title = (state.campName||'Color War')+' - '+division+' Schedule'+(teamById(teamId)?' - '+teamById(teamId).name:'');
+          html = buildSingleDivisionScheduleHtml(teamId, division);
+        } else if(action==='printActivitiesRoster'){
+          title = (state.campName||'Color War')+' - Activities Roster'+(teamById(teamId)?' - '+teamById(teamId).name:'');
+          html = buildActivitiesRosterHtml(teamId);
+        } else {
+          title = (state.campName||'Color War')+' - Counselor Assignments'+(teamById(teamId)?' - '+teamById(teamId).name:'');
+          html = buildCounselorActivitiesHtml(teamId);
+        }
+        await createGoogleDoc(title, html);
+      } finally {
+        target.disabled = false;
+        target.textContent = originalText;
+      }
     }
   });
 
